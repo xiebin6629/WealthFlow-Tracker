@@ -22,7 +22,7 @@ export const useTheme = () => {
                 return 'dark';
             }
         }
-        return 'dark'; // 默认深色模式（金融应用常用）
+        return 'light'; // 默认浅色模式
     });
 
     // 应用主题到 DOM

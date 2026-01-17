@@ -67,7 +67,7 @@ export const saveWorkerUrl = (url: string): void => {
  * 通过 Cloudflare Worker 获取价格（推荐用于生产环境）
  * Worker 会安全地调用 Gemini API
  */
-export const fetchPricesViaWorker = async (assets: Asset[]): Promise<PriceResult> => {
+export const fetchPricesViaWorker = async (assets: Asset[], apiKey?: string): Promise<PriceResult> => {
     const workerUrl = getWorkerUrl();
 
     if (!workerUrl) {
@@ -91,7 +91,10 @@ export const fetchPricesViaWorker = async (assets: Asset[]): Promise<PriceResult
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ assets: assetList }),
+        body: JSON.stringify({
+            assets: assetList,
+            apiKey: apiKey // 传递用户自备的 API Key
+        }),
     });
 
     if (!response.ok) {
@@ -142,14 +145,36 @@ export const fetchPricesViaFreeAPI = async (assets: Asset[]): Promise<PriceResul
         try {
             let symbol = asset.symbol;
 
+            // 常用马股代码映射 (Name -> Code)
+            const MY_STOCK_MAP: Record<string, string> = {
+                'MAYBANK': '1155',
+                'PBBANK': '1295',
+                'CIMB': '1023',
+                'TENAGA': '5347',
+                'IHH': '5225',
+                'PCHEM': '5183',
+                'DIGI': '6947',
+                'AXIATA': '6888',
+                'GENTING': '3182',
+                'IOICORP': '1961'
+            };
+
             // Yahoo Finance 符号转换
             if (asset.currency === 'MYR' && asset.category === 'Stock') {
-                symbol = `${asset.symbol}.KL`; // 马股后缀
+                let s = asset.symbol.toUpperCase().replace('.KL', ''); // 移除后缀进行查找
+                if (MY_STOCK_MAP[s]) {
+                    symbol = MY_STOCK_MAP[s]; // 替换为数字代码
+                }
+
+                // 如果用户没有输入 .KL 后缀，自动添加
+                if (!symbol.toUpperCase().endsWith('.KL')) {
+                    symbol = `${symbol}.KL`;
+                }
             }
 
-            // 使用 allorigins.win 作为 CORS 代理
+            // 使用 corsproxy.io 作为主要是 CORS 代理 (更稳定)
             const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
 
             const response = await fetch(proxyUrl);
 
@@ -226,11 +251,14 @@ export const fetchPricesViaFreeAPI = async (assets: Asset[]): Promise<PriceResul
 /**
  * 智能获取价格 - 自动选择最佳数据源
  */
+/**
+ * 智能获取价格 - 自动选择最佳数据源
+ */
 export const fetchPrices = async (
     assets: Asset[],
-    options?: { forceRefresh?: boolean; preferWorker?: boolean }
+    options?: { forceRefresh?: boolean; preferWorker?: boolean; apiKey?: string }
 ): Promise<PriceResult> => {
-    const { forceRefresh = false, preferWorker = true } = options || {};
+    const { forceRefresh = false, preferWorker = true, apiKey } = options || {};
 
     // 检查缓存
     if (!forceRefresh) {
@@ -245,7 +273,7 @@ export const fetchPrices = async (
     // 优先使用 Worker（如果配置了）
     if (preferWorker && workerUrl) {
         try {
-            return await fetchPricesViaWorker(assets);
+            return await fetchPricesViaWorker(assets, apiKey);
         } catch (error) {
             console.warn('Worker fetch failed, falling back to free API:', error);
         }

@@ -32,6 +32,7 @@ interface EditValues {
   pensionBase?: number;
   pensionMonthly?: number;
   pensionStart?: string;
+  groupName?: string;
 }
 
 interface TopUpValues {
@@ -41,7 +42,7 @@ interface TopUpValues {
 }
 
 // Define Column Keys for Drag and Drop
-type ColumnKey = 'symbol' | 'category' | 'currentPrice' | 'quantity' | 'totalCostOriginal' | 'currentValueUsd' | 'currentValueMyr' | 'currentAllocationPercent' | 'targetAllocation';
+type ColumnKey = 'symbol' | 'category' | 'currentPrice' | 'quantity' | 'totalCostOriginal' | 'currentValueUsd' | 'currentValueMyr' | 'currentAllocationPercent' | 'targetAllocation' | 'groupName';
 
 interface ColumnDef {
   key: ColumnKey;
@@ -60,6 +61,7 @@ const DEFAULT_COLUMNS: ColumnDef[] = [
   { key: 'currentValueMyr', label: '市值 (RM)', align: 'right' },
   { key: 'currentAllocationPercent', label: '占比 %', align: 'center' },
   { key: 'targetAllocation', label: '目标 %', align: 'center' },
+  { key: 'groupName', label: 'Group', align: 'left', width: 'w-[100px]' },
 ];
 
 const STORAGE_KEY_COL_ORDER = 'WF_COL_ORDER';
@@ -207,7 +209,8 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
       category: asset.category,
       pensionBase: asset.pensionConfig?.baseAmount,
       pensionMonthly: asset.pensionConfig?.monthlyContribution,
-      pensionStart: asset.pensionConfig?.startDate
+      pensionStart: asset.pensionConfig?.startDate,
+      groupName: asset.groupName || ''
     });
   };
 
@@ -227,7 +230,8 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
         quantity: isPen ? 0 : editValues.quantity,
         averageCost: newAverageCost,
         targetAllocation: editValues.targetAllocation,
-        category: editValues.category
+        category: editValues.category,
+        groupName: editValues.groupName
       };
 
       if (isPen) {
@@ -297,13 +301,13 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
             <input
               value={editValues!.symbol}
               onChange={(e) => setEditValues({ ...editValues!, symbol: e.target.value.toUpperCase() })}
-              className="font-bold text-lg text-slate-900 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-0.5"
+              className="font-bold text-lg text-slate-900 border-b border-slate-300 bg-white text-slate-900 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-0.5"
               placeholder="SYMBOL"
             />
             <input
               value={editValues!.name}
               onChange={(e) => setEditValues({ ...editValues!, name: e.target.value })}
-              className="text-xs text-slate-700 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-0.5"
+              className="text-xs text-slate-700 border-b border-slate-300 bg-white text-slate-900 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-0.5"
               placeholder="Asset Name"
             />
             <div className="flex gap-2 mt-1">
@@ -366,12 +370,12 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
           isPen ? (
             <div>
               <span className="text-[10px] text-slate-400 uppercase">Monthly</span>
-              <input type="number" className="w-24 p-2 border border-slate-300 rounded text-sm" value={editValues!.pensionMonthly} onChange={(e) => setEditValues({ ...editValues!, pensionMonthly: parseFloat(e.target.value) || 0 })} />
+              <input type="number" className="w-24 p-2 border border-slate-300 bg-white text-slate-900 rounded text-sm" value={editValues!.pensionMonthly} onChange={(e) => setEditValues({ ...editValues!, pensionMonthly: parseFloat(e.target.value) || 0 })} />
             </div>
           ) : isCash ? (
             <span className="text-slate-400 font-mono">1.00</span>
           ) : (
-            <input type="number" className="w-24 p-2 border border-slate-300 rounded text-sm" value={editValues!.currentPrice} onChange={(e) => setEditValues({ ...editValues!, currentPrice: parseFloat(e.target.value) || 0 })} />
+            <input type="number" className="w-24 p-2 border border-slate-300 bg-white text-slate-900 rounded text-sm" value={editValues!.currentPrice} onChange={(e) => setEditValues({ ...editValues!, currentPrice: parseFloat(e.target.value) || 0 })} />
           )
         ) : (
           <div className="text-slate-700 font-medium">
@@ -388,12 +392,12 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
           isPen ? (
             <div>
               <span className="text-[10px] text-slate-400 uppercase">Start Date</span>
-              <input type="date" className="w-32 p-2 border border-slate-300 rounded text-sm" value={editValues!.pensionStart} onChange={(e) => setEditValues({ ...editValues!, pensionStart: e.target.value })} />
+              <input type="date" className="w-32 p-2 border border-slate-300 bg-white text-slate-900 rounded text-sm" value={editValues!.pensionStart} onChange={(e) => setEditValues({ ...editValues!, pensionStart: e.target.value })} />
             </div>
           ) : isCash ? (
             <span className="text-slate-400">-</span>
           ) : (
-            <input type="number" className="w-24 p-2 border border-slate-300 rounded text-sm" value={editValues!.quantity} onChange={(e) => setEditValues({ ...editValues!, quantity: parseFloat(e.target.value) || 0 })} />
+            <input type="number" className="w-24 p-2 border border-slate-300 bg-white text-slate-900 rounded text-sm" value={editValues!.quantity} onChange={(e) => setEditValues({ ...editValues!, quantity: parseFloat(e.target.value) || 0 })} />
           )
         ) : (
           <div>
@@ -408,9 +412,9 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-400 uppercase font-bold">{isPen ? 'Base Amount' : asset.currency}</span>
             {isPen ? (
-              <input type="number" className="w-28 p-2 border border-slate-300 rounded text-sm" value={editValues!.pensionBase} onChange={(e) => setEditValues({ ...editValues!, pensionBase: parseFloat(e.target.value) || 0 })} />
+              <input type="number" className="w-28 p-2 border border-slate-300 bg-white text-slate-900 rounded text-sm" value={editValues!.pensionBase} onChange={(e) => setEditValues({ ...editValues!, pensionBase: parseFloat(e.target.value) || 0 })} />
             ) : (
-              <input type="number" className="w-28 p-2 border border-slate-300 rounded text-sm" value={editValues!.totalCostOriginal}
+              <input type="number" className="w-28 p-2 border border-slate-300 bg-white text-slate-900 rounded text-sm" value={editValues!.totalCostOriginal}
                 onChange={(e) => {
                   const val = parseFloat(e.target.value) || 0;
                   if (isCashLike(editValues!.category) && !isPen) {
@@ -443,9 +447,16 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
 
       case 'targetAllocation':
         return isEditing ? (
-          <input type="number" className="w-20 p-2 border border-slate-300 rounded text-center text-sm" value={editValues!.targetAllocation} onChange={(e) => setEditValues({ ...editValues!, targetAllocation: parseFloat(e.target.value) || 0 })} />
+          <input type="number" className="w-20 p-2 border border-slate-300 bg-white text-slate-900 rounded text-center text-sm" value={editValues!.targetAllocation} onChange={(e) => setEditValues({ ...editValues!, targetAllocation: parseFloat(e.target.value) || 0 })} />
         ) : (
           <div className="text-slate-500 font-medium">{asset.targetAllocation}%</div>
+        );
+
+      case 'groupName':
+        return isEditing ? (
+          <input type="text" className="w-24 p-2 border border-slate-300 bg-white text-slate-900 rounded text-sm" placeholder="Group..." value={editValues!.groupName} onChange={(e) => setEditValues({ ...editValues!, groupName: e.target.value })} />
+        ) : (
+          <div className="text-slate-400 text-xs">{asset.groupName || '-'}</div>
         );
 
       default:
@@ -649,19 +660,19 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
               {isCashLike(topUpState.asset.category) ? (
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">Amount to Add ({topUpState.asset.currency})</label>
-                  <input type="number" autoFocus className="w-full text-lg p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                  <input type="number" autoFocus className="w-full text-lg p-3 border border-slate-300 bg-white text-slate-900 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                     placeholder="e.g. 5000" value={topUpState.addedQuantity} onChange={(e) => setTopUpState({ ...topUpState, addedQuantity: e.target.value })} />
                 </div>
               ) : (
                 <>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Units Bought</label>
-                    <input type="number" autoFocus className="w-full text-lg p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                    <input type="number" autoFocus className="w-full text-lg p-3 border border-slate-300 bg-white text-slate-900 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                       placeholder="e.g. 10.5" value={topUpState.addedQuantity} onChange={(e) => setTopUpState({ ...topUpState, addedQuantity: e.target.value })} />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Buy Price ({topUpState.asset.currency})</label>
-                    <input type="number" className="w-full text-lg p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                    <input type="number" className="w-full text-lg p-3 border border-slate-300 bg-white text-slate-900 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                       value={topUpState.buyPrice} onChange={(e) => setTopUpState({ ...topUpState, buyPrice: e.target.value })} />
                   </div>
                   <div className="pt-2 text-sm text-slate-500 flex justify-between border-t border-slate-100">

@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /**
  * WealthFlow Tracker - 设计系统
  * 金融科技专业配色 + Light/Dark 双主题
@@ -119,53 +123,7 @@
    深色主题 (Dark Mode)
    ============================================ */
 
-[data-theme="dark"] {
-  /* 背景色 - OLED 深蓝黑 */
-  --bg-primary: #030712;
-  --bg-secondary: #0A0F1C;
-  --bg-tertiary: #111827;
-  --bg-elevated: #1E293B;
-
-  /* 侧边栏 - 玻璃拟态 */
-  --sidebar-bg: linear-gradient(180deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
-  --sidebar-text: #F1F5F9;
-  --sidebar-text-muted: #64748B;
-  --sidebar-border: rgba(255, 255, 255, 0.08);
-  --sidebar-hover: rgba(255, 255, 255, 0.05);
-  --sidebar-active: rgba(59, 130, 246, 0.3);
-
-  /* 文字色 */
-  --text-primary: #F8FAFC;
-  --text-secondary: #CBD5E1;
-  --text-muted: #64748B;
-  --text-inverse: #0F172A;
-
-  /* 边框色 */
-  --border-light: rgba(255, 255, 255, 0.06);
-  --border-default: rgba(255, 255, 255, 0.1);
-  --border-dark: rgba(255, 255, 255, 0.15);
-
-  /* 主色更亮 */
-  --primary-50: rgba(59, 130, 246, 0.1);
-  --primary-100: rgba(59, 130, 246, 0.2);
-
-  /* 卡片 - 玻璃效果 */
-  --card-bg: rgba(30, 41, 59, 0.6);
-  --card-border: rgba(255, 255, 255, 0.08);
-  --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
-
-  /* 输入框 - 增加对比度 */
-  --input-bg: rgba(15, 23, 42, 0.9);
-  --input-border: rgba(148, 163, 184, 0.4);
-  /* 更亮的边框 */
-  --input-focus: #3B82F6;
-  --input-text: #F8FAFC;
-
-  /* 滚动条 */
-  --scrollbar-track: #1E293B;
-  --scrollbar-thumb: #334155;
-  --scrollbar-thumb-hover: #475569;
-}
+/* Dark Mode removed by user request */
 
 /* ============================================
    基础样式
@@ -367,25 +325,7 @@ body {
   color: var(--text-muted);
 }
 
-/* Dark mode 输入框增强 */
-[data-theme="dark"] input,
-[data-theme="dark"] select,
-[data-theme="dark"] textarea {
-  background: rgba(15, 23, 42, 0.9) !important;
-  border: 2px solid rgba(148, 163, 184, 0.35) !important;
-  color: #F8FAFC !important;
-}
 
-[data-theme="dark"] input:focus,
-[data-theme="dark"] select:focus,
-[data-theme="dark"] textarea:focus {
-  border-color: #3B82F6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
-}
-
-[data-theme="dark"] input::placeholder {
-  color: #64748B !important;
-}
 
 /* ============================================
    动画
@@ -485,15 +425,7 @@ body {
   color: var(--danger-600);
 }
 
-[data-theme="dark"] .stat-badge-positive {
-  background: rgba(16, 185, 129, 0.15);
-  color: var(--success-400);
-}
 
-[data-theme="dark"] .stat-badge-negative {
-  background: rgba(244, 63, 94, 0.15);
-  color: var(--danger-400);
-}
 
 /* ============================================
    进度条
@@ -564,8 +496,4 @@ body {
   align-items: center;
   justify-content: center;
   color: white;
-}
-
-[data-theme="dark"] .theme-toggle-thumb {
-  transform: translateX(30px);
 }

@@ -8,12 +8,11 @@ import RebalanceView from './components/RebalanceView';
 import FireProjection from './components/FireProjection';
 import YearlyRecords from './components/YearlyRecords';
 import FirebaseSyncPanel from './components/FirebaseSyncPanel';
-import ThemeToggle from './components/ThemeToggle';
-import { useTheme } from './hooks/useTheme';
 import { UserData } from './services/firebaseService';
 import { LayoutDashboard, List, Settings, Sparkles, Plus, X, Globe, Menu, Eye, EyeOff, Download, Upload, Save, Database, TrendingUp, Cloud, CloudUpload, CloudDownload, LogOut, Loader2, FileJson, Clock, Key, Copy, AlertCircle, HelpCircle, Wrench, History, ArrowRight, CheckCircle2 } from 'lucide-react';
-import { analyzePortfolio, fetchLiveMarketData } from './services/geminiService';
-import { initGoogleDrive, requestAccessToken, saveToDrive, listBackupFiles, getFileContent, DriveFile, isDriveScriptLoaded, setDynamicClientId } from './services/driveService';
+import { analyzePortfolio } from './services/geminiService';
+import { fetchPrices } from './services/priceService';
+
 
 const STORAGE_KEYS = {
   ASSETS: 'WF_ASSETS',
@@ -30,12 +29,16 @@ interface PriceUpdateLogItem {
   symbol: string;
   oldPrice: number;
   newPrice: number;
-  currency: string;
+  currency?: string; // Made optional as new snippet doesn't include it
+  source?: string; // Added source as per new snippet
 }
 
 const App: React.FC = () => {
   // 主题切换
-  const { theme, isDark, toggleTheme } = useTheme();
+  // 主题切换 - 强制浅色
+  const theme = 'light';
+  const isDark = false;
+  const toggleTheme = () => { };
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'projection' | 'history'>('dashboard');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -159,21 +162,20 @@ const App: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [updateLog, setUpdateLog] = useState<PriceUpdateLogItem[]>([]);
   const [showUpdateLog, setShowUpdateLog] = useState(false);
-  const [exchangeRateUpdate, setExchangeRateUpdate] = useState<{ old: number, new: number } | null>(null);
+  const [exchangeRateUpdate, setExchangeRateUpdate] = useState<{ old: number, new: number, from?: number, to?: number, source?: string } | null>(null); // Updated type for exchangeRateUpdate
+
+  // Worker URL State
+  const [workerUrl, setWorkerUrl] = useState<string>(localStorage.getItem('WF_WORKER_URL') || '');
+  useEffect(() => {
+    localStorage.setItem('WF_WORKER_URL', workerUrl);
+  }, [workerUrl]);
 
   // AI State
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiInsight, setAiInsight] = useState<string>('');
   const [aiLoading, setAiLoading] = useState(false);
 
-  // Cloud State
-  const [googleAccessToken, setGoogleAccessToken] = useState<string | null>(null);
-  const [isCloudLoading, setIsCloudLoading] = useState(false);
-  const [isDriveReady, setIsDriveReady] = useState(false);
 
-  // File Selection Modal State
-  const [fileList, setFileList] = useState<DriveFile[]>([]);
-  const [showFileSelector, setShowFileSelector] = useState(false);
 
   // UI State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -195,58 +197,7 @@ const App: React.FC = () => {
     setLastAutoSave(new Date());
   }, [assets, settings, fireSettings, dataSources, yearlyRecords, lastUpdated, lastCloudSync]);
 
-  // Handle Client ID changes
-  const handleSaveClientId = () => {
-    const trimmed = tempClientId.trim();
-    if (!trimmed) {
-      alert("Please enter a valid Client ID");
-      return;
-    }
-    setCustomClientId(trimmed);
-    localStorage.setItem(STORAGE_KEYS.CLIENT_ID, trimmed);
-    setIsEditingClientId(false);
 
-    // Force re-init logic
-    setDynamicClientId(trimmed);
-    initGoogleDrive((tokenResponse) => {
-      if (tokenResponse && tokenResponse.access_token) {
-        setGoogleAccessToken(tokenResponse.access_token);
-      }
-    });
-  };
-
-  const handleClearClientId = () => {
-    if (window.confirm("Disconnecting will remove your Client ID from this browser. Continue?")) {
-      setCustomClientId('');
-      setGoogleAccessToken(null);
-      localStorage.removeItem(STORAGE_KEYS.CLIENT_ID);
-      setIsEditingClientId(true);
-    }
-  };
-
-  const handleCopy = (text: string) => {
-    navigator.clipboard.writeText(text);
-    alert("Copied to clipboard!");
-  };
-
-  // Init Google Drive and check script status
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const ready = isDriveScriptLoaded();
-      setIsDriveReady(ready);
-
-      if (ready && customClientId) {
-        clearInterval(interval);
-        setDynamicClientId(customClientId);
-        initGoogleDrive((tokenResponse) => {
-          if (tokenResponse && tokenResponse.access_token) {
-            setGoogleAccessToken(tokenResponse.access_token);
-          }
-        });
-      }
-    }, 500);
-    return () => clearInterval(interval);
-  }, [customClientId]); // Re-run if client ID changes
 
   // --- Calculations ---
 
@@ -421,50 +372,50 @@ const App: React.FC = () => {
     setExchangeRateUpdate(null);
 
     try {
-      // 传入用户设置的 API Key
-      const result = await fetchLiveMarketData(assets, settings.geminiApiKey);
+      // 使用新的 priceService 获取价格，传入 API Key
+      const result = await fetchPrices(assets, {
+        forceRefresh: true,
+        preferWorker: !!workerUrl,
+        apiKey: settings.geminiApiKey
+      });
+
       const updates: PriceUpdateLogItem[] = [];
 
       // Update Exchange Rate
       if (result.exchangeRate) {
         setExchangeRateUpdate({
-          old: settings.exchangeRateUsdMyr,
-          new: result.exchangeRate
+          from: settings.exchangeRateUsdMyr,
+          to: result.exchangeRate,
+          source: result.sources.find(s => s.title.includes('Exchange'))?.title || 'API'
         });
         setSettings(prev => ({ ...prev, exchangeRateUsdMyr: result.exchangeRate! }));
       }
 
-      // Update Assets and track changes
-      setAssets(prevAssets => prevAssets.map(asset => {
-        const isCash = ['Cash (Investment)', 'Cash (Saving)', 'Money Market Fund', 'Pension'].includes(asset.category);
-
-        if (isCash) return asset;
-
+      // Update Asset Prices
+      const newAssets = assets.map(asset => {
         const newPrice = result.prices[asset.symbol];
         if (newPrice !== undefined && newPrice !== asset.currentPrice) {
           updates.push({
             symbol: asset.symbol,
             oldPrice: asset.currentPrice,
             newPrice: newPrice,
-            currency: asset.currency
+            source: result.sources.find(s => s.title.includes('CoinGecko') || s.title.includes('Yahoo'))?.title || 'API'
           });
           return { ...asset, currentPrice: newPrice };
         }
         return asset;
-      }));
+      });
 
-      setDataSources(result.sources);
-      setLastUpdated(new Date());
+      setAssets(newAssets);
       setUpdateLog(updates);
+      setShowUpdateLog(true);
 
-      // Show summary if we have any data
-      if (updates.length > 0 || result.exchangeRate) {
-        setShowUpdateLog(true);
-      }
+      // Auto-hide log after 5s
+      setTimeout(() => setShowUpdateLog(false), 8000);
 
     } catch (error) {
-      console.error("Failed to update prices", error);
-      alert("Could not fetch live market data. Please check your API Key.");
+      console.error("Failed to fetch prices:", error);
+      alert("Failed to refresh market data. Please check your API usage or network.");
     } finally {
       setIsRefreshing(false);
     }
@@ -545,85 +496,7 @@ const App: React.FC = () => {
     if (json.lastUpdated) setLastUpdated(new Date(json.lastUpdated));
   };
 
-  // Google Drive Handlers
-  const handleGoogleSignIn = () => {
-    if (!isDriveReady) {
-      alert("Google services are still loading. Please wait a moment.");
-      return;
-    }
-    requestAccessToken();
-  };
 
-  const handleSaveToCloud = async () => {
-    if (!googleAccessToken) return;
-    setIsCloudLoading(true);
-    try {
-      const data = {
-        assets,
-        settings,
-        fireSettings,
-        dataSources,
-        yearlyRecords,
-        lastUpdated: new Date().toISOString()
-      };
-      await saveToDrive(data, googleAccessToken);
-      const now = new Date();
-      setLastCloudSync(now);
-      alert(`Successfully saved to Google Drive at ${now.toLocaleTimeString()}`);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to save to Google Drive. Check console for details.");
-    } finally {
-      setIsCloudLoading(false);
-    }
-  };
-
-  const handleLoadFromCloudClick = async () => {
-    if (!googleAccessToken) return;
-    setIsCloudLoading(true);
-    setFileList([]);
-    try {
-      const files = await listBackupFiles(googleAccessToken);
-      if (files.length === 0) {
-        alert("No backup files found in this account (created by WealthFlow).");
-      } else if (files.length === 1) {
-        await loadFile(files[0].id);
-      } else {
-        setFileList(files);
-        setShowFileSelector(true);
-      }
-    } catch (error) {
-      console.error(error);
-      if (error.message.includes('Unauthorized')) {
-        alert("Session expired. Please click 'Disconnect Drive' and connect again.");
-      } else {
-        alert("Failed to list files from Google Drive.");
-      }
-    } finally {
-      setIsCloudLoading(false);
-    }
-  };
-
-  const loadFile = async (fileId: string) => {
-    setIsCloudLoading(true);
-    try {
-      const data = await getFileContent(fileId, googleAccessToken!);
-      restoreState(data);
-      const now = new Date();
-      setLastCloudSync(now);
-      alert("Successfully loaded data from Google Drive.");
-      setShowFileSelector(false);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to download file.");
-    } finally {
-      setIsCloudLoading(false);
-    }
-  }
-
-  const handleSignOut = () => {
-    setGoogleAccessToken(null);
-  };
 
   const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
   const togglePrivacy = () => setIsPrivacyMode(!isPrivacyMode);
@@ -644,7 +517,7 @@ const App: React.FC = () => {
 
   // 当前数据用于 Firebase 同步
   const firebaseUserData: UserData = useMemo(() => ({
-    assets,
+    assets: JSON.parse(JSON.stringify(assets)), // Remove undefined values (e.g. pensionConfig) to prevent Firestore crash
     settings,
     fireSettings,
     yearlyRecords,
@@ -658,13 +531,13 @@ const App: React.FC = () => {
       <div
         className="md:hidden p-4 flex justify-between items-center z-30 sticky top-0 shadow-lg backdrop-blur-xl"
         style={{
-          background: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          background: 'rgba(255, 255, 255, 0.95)',
           borderBottom: '1px solid var(--border-light)'
         }}
       >
         <h1 className="text-lg font-bold gradient-text">WealthFlow</h1>
         <div className="flex items-center gap-2">
-          <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+
           <button onClick={togglePrivacy} className="p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
             {isPrivacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
@@ -783,6 +656,23 @@ const App: React.FC = () => {
               >
                 点击获取免费 API Key →
               </a>
+
+              {/* Worker URL */}
+              <div className="mt-3 relative">
+                <label className="block text-slate-500 text-xs mb-1.5 uppercase font-bold flex items-center gap-1">
+                  Cloudflare Worker URL <span className="text-[10px] text-slate-600 font-normal normal-case">(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="https://..."
+                  value={workerUrl}
+                  onChange={(e) => setWorkerUrl(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-xs"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  配置 Worker URL 以使用更稳定的价格代理。若留空则使用本地/免费API。
+                </p>
+              </div>
             </div>
 
             {/* Firebase 云同步 - 推荐 */}
@@ -867,7 +757,7 @@ const App: React.FC = () => {
 
           <div className="flex items-center gap-3">
             {/* Theme Toggle */}
-            <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+
 
             {/* Privacy Toggle */}
             <button
@@ -1054,9 +944,9 @@ const App: React.FC = () => {
                   <div className="bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
                     <p className="text-xs font-bold text-slate-500 uppercase mb-1">USD / MYR Exchange Rate</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-slate-400 line-through text-xs">{exchangeRateUpdate.old.toFixed(4)}</span>
+                      <span className="text-slate-400 line-through text-xs">{(exchangeRateUpdate.from || 0).toFixed(4)}</span>
                       <ArrowRight size={14} className="text-slate-300" />
-                      <span className="font-bold text-slate-800">{exchangeRateUpdate.new.toFixed(4)}</span>
+                      <span className="font-bold text-slate-800">{(exchangeRateUpdate.to || 0).toFixed(4)}</span>
                     </div>
                   </div>
                 )}
@@ -1132,48 +1022,7 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* File Selector Modal */}
-      {showFileSelector && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-slide-in-right">
-            <div className="bg-blue-600 px-6 py-4 flex justify-between items-center text-white">
-              <h3 className="font-bold flex items-center gap-2">
-                <CloudDownload size={20} /> Select Backup to Restore
-              </h3>
-              <button onClick={() => setShowFileSelector(false)} className="hover:bg-white/20 p-1 rounded">
-                <X size={20} />
-              </button>
-            </div>
-            <div className="p-4 max-h-[60vh] overflow-y-auto">
-              <p className="text-sm text-slate-500 mb-3">Found {fileList.length} backup files. Select one to restore:</p>
-              <div className="space-y-2">
-                {fileList.map(file => (
-                  <button
-                    key={file.id}
-                    onClick={() => loadFile(file.id)}
-                    disabled={isCloudLoading}
-                    className="w-full flex items-center justify-between p-3 rounded-lg border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all text-left group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-slate-100 rounded-lg group-hover:bg-blue-200 text-slate-500 group-hover:text-blue-700">
-                        <FileJson size={20} />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-slate-800 text-sm">{file.name}</p>
-                        <p className="text-xs text-slate-400 flex items-center gap-1">
-                          <Clock size={10} />
-                          {file.modifiedTime ? new Date(file.modifiedTime).toLocaleString() : 'Unknown Date'}
-                        </p>
-                      </div>
-                    </div>
-                    {isCloudLoading && <Loader2 size={16} className="animate-spin text-blue-500" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

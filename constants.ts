@@ -56,7 +56,7 @@ export const INITIAL_ASSETS: Asset[] = [
   },
   {
     id: '4',
-    symbol: 'MAYBANK',
+    symbol: '1155', // Correct Symbol for Maybank
     name: 'Malayan Banking Bhd',
     category: 'Stock',
     currency: 'MYR',

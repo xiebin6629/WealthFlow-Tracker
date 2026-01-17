@@ -13,6 +13,7 @@ export interface Asset {
   averageCost: number;
   currentPrice: number;
   targetAllocation: number; // Percentage 0-100
+  groupName?: string; // For grouping assets (e.g. BTC + IBIT)
   pensionConfig?: {
     baseAmount: number;
     monthlyContribution: number;

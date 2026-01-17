@@ -1,3 +1,4 @@
+
 /**
  * Firebase Sync Panel - Firebase 云同步面板组件
  * 提供 Firebase 登录、数据同步功能
@@ -9,13 +10,11 @@ import {
     initFirebase,
     signInWithGoogle,
     signOutFirebase,
-    getCurrentUser,
     getUserInfo,
     saveDataToFirebase,
     loadDataFromFirebase,
     subscribeToDataChanges,
     isFirebaseLoaded,
-    isFirebaseInitialized,
     onAuthStateChanged,
     UserData
 } from '../services/firebaseService';
@@ -166,11 +165,14 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
     // Firebase 未就绪
     if (!isFirebaseReady) {
         return (
-            <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-                <div className="flex items-center gap-2 text-slate-400 mb-3 text-sm uppercase font-semibold tracking-wider">
+            <div
+                className="rounded-xl p-4 border"
+                style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-default)' }}
+            >
+                <div className="flex items-center gap-2 mb-3 text-sm uppercase font-semibold tracking-wider" style={{ color: 'var(--text-muted)' }}>
                     <Cloud size={16} /> Firebase 云同步
                 </div>
-                <div className="flex items-center justify-center gap-2 py-3 text-slate-500 text-sm">
+                <div className="flex items-center justify-center gap-2 py-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
                     <Loader2 size={16} className="animate-spin" />
                     正在初始化...
                 </div>
@@ -179,8 +181,15 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
     }
 
     return (
-        <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
-            <div className="flex items-center gap-2 text-slate-400 mb-3 text-sm uppercase font-semibold tracking-wider">
+        <div
+            className="rounded-xl p-4 border transition-all"
+            style={{
+                background: 'var(--bg-elevated)',
+                borderColor: 'var(--border-default)',
+                boxShadow: 'var(--shadow-sm)'
+            }}
+        >
+            <div className="flex items-center gap-2 mb-3 text-sm uppercase font-semibold tracking-wider" style={{ color: 'var(--text-muted)' }}>
                 <Cloud size={16} />
                 Firebase 云同步
                 {syncStatus === 'success' && <CheckCircle2 size={14} className="text-emerald-500" />}
@@ -190,16 +199,20 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
             {!user ? (
                 // 未登录状态
                 <div className="space-y-3">
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
                         使用 Google 账号登录，在多设备间同步数据
                     </p>
                     <button
                         onClick={handleLogin}
                         disabled={isLoading}
                         className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-sm ${isLoading
-                                ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-500 text-white'
+                            ? 'cursor-not-allowed opacity-70'
+                            : 'text-white'
                             }`}
+                        style={{
+                            background: isLoading ? 'var(--bg-tertiary)' : 'linear-gradient(135deg, var(--primary-500) 0%, var(--primary-600) 100%)',
+                            color: isLoading ? 'var(--text-muted)' : 'white'
+                        }}
                     >
                         {isLoading ? (
                             <>
@@ -225,7 +238,7 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
                 // 已登录状态
                 <div className="space-y-3">
                     {/* 用户信息 */}
-                    <div className="flex items-center gap-2 bg-slate-900/50 rounded-lg p-2">
+                    <div className="flex items-center gap-2 rounded-lg p-2" style={{ background: 'var(--bg-tertiary)' }}>
                         {userInfo?.photoURL ? (
                             <img
                                 src={userInfo.photoURL}
@@ -233,15 +246,15 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
                                 className="w-8 h-8 rounded-full"
                             />
                         ) : (
-                            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
-                                <User size={16} className="text-slate-400" />
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'var(--bg-secondary)' }}>
+                                <User size={16} style={{ color: 'var(--text-muted)' }} />
                             </div>
                         )}
                         <div className="flex-1 min-w-0">
-                            <p className="text-sm text-white font-medium truncate">
+                            <p className="text-sm font-medium truncate" style={{ color: 'var(--text-primary)' }}>
                                 {userInfo?.displayName || 'User'}
                             </p>
-                            <p className="text-xs text-slate-500 truncate">
+                            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
                                 {userInfo?.email}
                             </p>
                         </div>
@@ -252,7 +265,7 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
                         <button
                             onClick={handleSaveToCloud}
                             disabled={isLoading}
-                            className="flex flex-col items-center justify-center gap-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm disabled:opacity-50"
+                            className="btn btn-success flex-col py-3 text-xs gap-1"
                         >
                             {isLoading && syncStatus === 'syncing' ? (
                                 <Loader2 size={18} className="animate-spin" />
@@ -264,7 +277,7 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
                         <button
                             onClick={handleLoadFromCloud}
                             disabled={isLoading}
-                            className="flex flex-col items-center justify-center gap-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold transition-colors shadow-sm disabled:opacity-50"
+                            className="btn btn-primary flex-col py-3 text-xs gap-1"
                         >
                             {isLoading && syncStatus === 'syncing' ? (
                                 <Loader2 size={18} className="animate-spin" />
@@ -277,11 +290,11 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
 
                     {/* 自动同步开关 */}
                     <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">实时同步</span>
+                        <span style={{ color: 'var(--text-muted)' }}>实时同步</span>
                         <button
                             onClick={() => setAutoSyncEnabled(!autoSyncEnabled)}
-                            className={`w-10 h-5 rounded-full transition-colors ${autoSyncEnabled ? 'bg-emerald-600' : 'bg-slate-700'
-                                }`}
+                            className={`w-10 h-5 rounded-full transition-colors`}
+                            style={{ background: autoSyncEnabled ? 'var(--success-500)' : 'var(--bg-tertiary)' }}
                         >
                             <div
                                 className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${autoSyncEnabled ? 'translate-x-5' : 'translate-x-0.5'
@@ -292,7 +305,7 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
 
                     {/* 同步状态 */}
                     {lastSyncTime && (
-                        <div className="text-[10px] text-slate-500 text-center">
+                        <div className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
                             上次同步: {lastSyncTime.toLocaleString()}
                         </div>
                     )}
@@ -304,7 +317,12 @@ const FirebaseSyncPanel: React.FC<FirebaseSyncPanelProps> = ({ currentData, onDa
                     {/* 登出按钮 */}
                     <button
                         onClick={handleLogout}
-                        className="w-full flex items-center justify-center gap-2 py-2 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-lg text-xs font-medium transition-colors border border-slate-700"
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-colors border"
+                        style={{
+                            background: 'var(--bg-tertiary)',
+                            color: 'var(--text-muted)',
+                            borderColor: 'var(--border-default)'
+                        }}
                     >
                         <LogOut size={14} /> 退出登录
                     </button>

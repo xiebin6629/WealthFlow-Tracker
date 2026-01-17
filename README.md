@@ -45,6 +45,10 @@
 - **再平衡建议** - 自动生成买入/卖出建议以达到目标配置
 - **偏离度分析** - 直观显示当前配置与目标的偏差
 
+### 📉 稳定的价格数据源
+- **Cloudflare Worker 代理** - (推荐) 部署自己的 Worker 代理，安全、稳定地调用 Gemini API 获取价格，避免 CORS 问题
+- **免费 API 回退** - 自动在 Worker 不可用时回退到 Yahoo Finance/Crypto API
+
 ### 🤖 AI 智能分析
 - **Gemini AI 集成** - 利用 Google Gemini 获取实时市场数据
 - **投资组合分析** - AI 驱动的投资建议和市场洞察
@@ -106,7 +110,7 @@ npm run dev
 ### 第四步：开始使用
 
 - 点击 **"+ Add Asset"** 添加您的资产
-- 点击 **"Refresh Prices"** 获取实时价格
+- 点击 **"Refresh Prices"** 获取实时价格（支持配置 Cloudflare Worker 代理）
 - 点击 **"AI Analyst"** 获取投资分析
 
 ## 🛠️ 技术栈
@@ -119,6 +123,7 @@ npm run dev
 | **TailwindCSS** | 实用优先的 CSS 框架 |
 | **Recharts** | React 图表库 |
 | **Firebase** | 实时数据库 + 身份认证 |
+| **Cloudflare Workers** | 安全 API 代理 |
 | **Google Gemini** | AI 智能分析服务 |
 | **GitHub Pages** | 静态网站托管 |
 
@@ -134,7 +139,9 @@ WealthFlow-Tracker/
 │   └── YearlyRecords.tsx   # 年度记录管理
 ├── services/               # 外部服务集成
 │   ├── firebaseService.ts  # Firebase 实时数据库
-│   └── geminiService.ts    # Gemini AI 服务
+│   ├── priceService.ts     # 价格获取服务 (Worker/API)
+│   └── geminiService.ts    # Gemini AI 分析服务
+├── cloudflare-worker/      # API 代理 Worker 代码
 ├── .github/workflows/      # GitHub Actions
 │   └── deploy.yml          # 自动部署工作流
 ├── App.tsx                 # 主应用组件
