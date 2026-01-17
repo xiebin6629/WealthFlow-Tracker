@@ -416,7 +416,8 @@ const App: React.FC = () => {
     setExchangeRateUpdate(null);
 
     try {
-      const result = await fetchLiveMarketData(assets);
+      // 传入用户设置的 API Key
+      const result = await fetchLiveMarketData(assets, settings.geminiApiKey);
       const updates: PriceUpdateLogItem[] = [];
 
       // Update Exchange Rate
@@ -741,6 +742,28 @@ const App: React.FC = () => {
                 onChange={(e) => setSettings({ ...settings, savingTarget: parseFloat(e.target.value) || 0 })}
                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm"
               />
+            </div>
+
+            {/* Gemini API Key */}
+            <div className="mt-4 pt-4 border-t border-slate-700">
+              <label className="block text-slate-500 text-xs mb-1.5 uppercase font-bold">
+                Gemini API Key
+              </label>
+              <input
+                type="password"
+                placeholder="AIzaSy..."
+                value={settings.geminiApiKey || ''}
+                onChange={(e) => setSettings({ ...settings, geminiApiKey: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm"
+              />
+              <a
+                href="https://aistudio.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-blue-400 hover:underline mt-1 inline-block"
+              >
+                点击获取免费 API Key →
+              </a>
             </div>
 
             {/* Firebase 云同步 - 推荐 */}

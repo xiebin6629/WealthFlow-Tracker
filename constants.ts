@@ -5,6 +5,7 @@ export const INITIAL_SETTINGS: GlobalSettings = {
   exchangeRateUsdMyr: 4.1325,
   financialFreedomTarget: 500000, // 500k Target
   savingTarget: 15000, // 15k Emergency Fund Target
+  geminiApiKey: '', // 用户自备
 };
 
 export const INITIAL_FIRE_SETTINGS: FireProjectionSettings = {

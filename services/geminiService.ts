@@ -20,13 +20,14 @@ export const analyzePortfolio = async (
   settings: GlobalSettings
 ): Promise<string> => {
   try {
-    const apiKey = process.env.API_KEY;
+    // 优先使用用户设置的 API Key，否则使用环境变量
+    const apiKey = settings.geminiApiKey || process.env.API_KEY;
     if (!apiKey) {
-      return "API Key is missing. Please check your environment configuration.";
+      return "请在设置中输入您的 Gemini API Key。获取地址: https://aistudio.google.com/app/apikey";
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    
+
     // Prepare data for the model
     const portfolioSummary = assets.map(a => ({
       symbol: a.symbol,
@@ -69,23 +70,24 @@ export interface MarketDataResult {
   sources: GroundingSource[];
 }
 
-export const fetchLiveMarketData = async (assets: Asset[]): Promise<MarketDataResult> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key is missing");
+export const fetchLiveMarketData = async (assets: Asset[], apiKey?: string): Promise<MarketDataResult> => {
+  // 使用传入的 API Key 或环境变量
+  const key = apiKey || process.env.API_KEY;
+  if (!key) {
+    throw new Error("请在设置中输入您的 Gemini API Key");
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey: key });
 
   // Create a more descriptive list to help the AI search better
   const assetList = assets.map(a => {
-      let desc = `Symbol: ${a.symbol}`;
-      if (a.category === 'Stock' && a.currency === 'MYR') desc += ` (Bursa Malaysia/KLSE Stock)`;
-      else if (a.category === 'ETF') desc += ` (ETF)`;
-      else if (a.category === 'Crypto') desc += ` (Cryptocurrency)`;
-      return desc;
+    let desc = `Symbol: ${a.symbol}`;
+    if (a.category === 'Stock' && a.currency === 'MYR') desc += ` (Bursa Malaysia/KLSE Stock)`;
+    else if (a.category === 'ETF') desc += ` (ETF)`;
+    else if (a.category === 'Crypto') desc += ` (Cryptocurrency)`;
+    return desc;
   }).join('\n');
-  
+
   const prompt = `
     I need the most recent market data.
     
@@ -136,13 +138,13 @@ export const fetchLiveMarketData = async (assets: Asset[]): Promise<MarketDataRe
       // 3. [^0-9-]* -> Matches any non-digit prefix (like "RM ", "$", "MYR ")
       // 4. ([\d,]+\.?\d*) -> Captures the number (including commas)
       const match = cleanLine.match(/([A-Za-z0-9_]+):\s*[^0-9-]*([\d,]+\.?\d*)/);
-      
+
       if (match) {
         const key = match[1];
         // Remove commas before parsing
         const rawValue = match[2].replace(/,/g, '');
         const value = parseFloat(rawValue);
-        
+
         if (!isNaN(value)) {
           if (key === 'USD_MYR') {
             exchangeRate = value;

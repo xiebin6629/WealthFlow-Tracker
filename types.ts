@@ -24,6 +24,7 @@ export interface GlobalSettings {
   exchangeRateUsdMyr: number;
   financialFreedomTarget: number;
   savingTarget: number;
+  geminiApiKey?: string; // 用户自备的 Gemini API Key
 }
 
 export interface FireProjectionSettings {
@@ -90,5 +91,5 @@ export interface YearlyRecord {
   vooReturn?: number; // Market Benchmark Return (e.g. S&P 500)
   note?: string;
   // Snapshot date helps sort if user has multiple entries for same year (though typically 1 per year)
-  dateRecorded: string; 
+  dateRecorded: string;
 }
