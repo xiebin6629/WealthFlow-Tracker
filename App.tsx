@@ -8,6 +8,8 @@ import RebalanceView from './components/RebalanceView';
 import FireProjection from './components/FireProjection';
 import YearlyRecords from './components/YearlyRecords';
 import FirebaseSyncPanel from './components/FirebaseSyncPanel';
+import ThemeToggle from './components/ThemeToggle';
+import { useTheme } from './hooks/useTheme';
 import { UserData } from './services/firebaseService';
 import { LayoutDashboard, List, Settings, Sparkles, Plus, X, Globe, Menu, Eye, EyeOff, Download, Upload, Save, Database, TrendingUp, Cloud, CloudUpload, CloudDownload, LogOut, Loader2, FileJson, Clock, Key, Copy, AlertCircle, HelpCircle, Wrench, History, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { analyzePortfolio, fetchLiveMarketData } from './services/geminiService';
@@ -32,6 +34,9 @@ interface PriceUpdateLogItem {
 }
 
 const App: React.FC = () => {
+  // 主题切换
+  const { theme, isDark, toggleTheme } = useTheme();
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'projection' | 'history'>('dashboard');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -647,32 +652,46 @@ const App: React.FC = () => {
   }), [assets, settings, fireSettings, yearlyRecords, lastUpdated]);
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50 text-slate-900 font-sans">
+    <div className="min-h-screen flex flex-col md:flex-row font-sans" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
 
       {/* Mobile Header */}
-      <div className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center z-30 sticky top-0 shadow-md">
-        <h1 className="text-lg font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">WealthFlow</h1>
-        <div className="flex items-center gap-3">
-          <button onClick={togglePrivacy} className="p-2 text-slate-300">
+      <div
+        className="md:hidden p-4 flex justify-between items-center z-30 sticky top-0 shadow-lg backdrop-blur-xl"
+        style={{
+          background: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+          borderBottom: '1px solid var(--border-light)'
+        }}
+      >
+        <h1 className="text-lg font-bold gradient-text">WealthFlow</h1>
+        <div className="flex items-center gap-2">
+          <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+          <button onClick={togglePrivacy} className="p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
             {isPrivacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
-          <button onClick={toggleMobileMenu} className="p-2 text-white">
+          <button onClick={toggleMobileMenu} className="p-2" style={{ color: 'var(--text-primary)' }}>
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </div>
 
-      {/* Sidebar Navigation */}
-      <aside className={`
-        fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 text-white flex flex-col transform transition-transform duration-300 ease-in-out
-        md:relative md:translate-x-0
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="p-8 border-b border-slate-700 hidden md:block">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+      {/* Sidebar Navigation - 玻璃拟态 */}
+      <aside
+        className={`
+          fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-all duration-300 ease-in-out
+          md:relative md:translate-x-0
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        `}
+        style={{
+          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(3, 7, 18, 0.99) 100%)',
+          backdropFilter: 'blur(20px) saturate(180%)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+        }}
+      >
+        <div className="p-8 hidden md:block" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <h1 className="text-2xl font-bold gradient-text">
             WealthFlow
           </h1>
-          <p className="text-sm text-slate-400 mt-2">Smart Investment Tracker</p>
+          <p className="text-sm mt-2" style={{ color: 'var(--sidebar-text-muted)' }}>智能财富追踪器</p>
         </div>
 
         <nav className="flex-1 p-6 space-y-3">
