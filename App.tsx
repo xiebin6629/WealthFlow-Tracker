@@ -851,58 +851,121 @@ const App: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-[calc(100vh-64px)] md:h-screen overflow-hidden relative">
         {/* Header - Desktop */}
-        <header className="h-20 bg-white border-b border-slate-200 hidden md:flex items-center justify-between px-8 flex-shrink-0">
-          <h2 className="text-2xl font-bold text-slate-800 capitalize tracking-tight">{activeTab === 'history' ? 'History Log' : activeTab}</h2>
+        <header
+          className="h-20 hidden md:flex items-center justify-between px-8 flex-shrink-0 backdrop-blur-xl"
+          style={{
+            background: isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.9)',
+            borderBottom: '1px solid var(--border-light)'
+          }}
+        >
+          <h2
+            className="text-2xl font-bold capitalize tracking-tight"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            {activeTab === 'history' ? 'History Log' : activeTab === 'projection' ? 'FIRE Projection' : activeTab}
+          </h2>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle */}
+            <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
+
+            {/* Privacy Toggle */}
             <button
               onClick={togglePrivacy}
-              className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 text-slate-500 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-colors"
-              title={isPrivacyMode ? "Show Values" : "Hide Values"}
+              className="flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all"
+              style={{
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-light)'
+              }}
+              title={isPrivacyMode ? "显示数值" : "隐藏数值"}
             >
               {isPrivacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
 
+            {/* Refresh Prices */}
             <button
               onClick={handleRefreshPrices}
               disabled={isRefreshing}
-              className={`flex items-center gap-2 px-4 py-2.5 border border-slate-300 rounded-lg text-sm font-semibold transition-colors shadow-sm ${isRefreshing ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : 'bg-white text-slate-700 hover:bg-slate-50 hover:text-blue-600 hover:border-blue-300'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
                 }`}
+              style={{
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)'
+              }}
             >
               <Globe size={18} className={isRefreshing ? 'animate-spin' : ''} />
-              {isRefreshing ? 'Updating...' : 'Refresh Prices'}
+              {isRefreshing ? '更新中...' : '刷新价格'}
             </button>
 
+            {/* Add Asset */}
             <button
               onClick={() => handleAddAsset('Stock')}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 text-sm font-semibold transition-colors shadow-sm"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all hover:scale-105"
+              style={{
+                background: 'var(--bg-tertiary)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-default)'
+              }}
             >
-              <Plus size={18} /> Add Asset
+              <Plus size={18} /> 添加资产
             </button>
+
+            {/* AI Analysis */}
             <button
               onClick={handleAiAnalysis}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 shadow-md shadow-indigo-200 text-sm font-semibold transition-colors"
+              className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all hover:scale-105"
+              style={{
+                background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)',
+                color: 'white',
+                boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.4)'
+              }}
             >
-              <Sparkles size={18} /> AI Analyst
+              <Sparkles size={18} /> AI 分析
             </button>
           </div>
         </header>
 
         {/* Mobile Action Bar */}
-        <div className="md:hidden bg-white p-4 border-b border-slate-200 flex justify-between gap-2 overflow-x-auto">
-          <button onClick={handleRefreshPrices} className="p-2 border rounded-lg bg-slate-50 flex-shrink-0">
-            <Globe size={20} className={isRefreshing ? 'animate-spin text-blue-500' : 'text-slate-600'} />
+        <div
+          className="md:hidden p-4 flex justify-between gap-2 overflow-x-auto backdrop-blur-xl"
+          style={{
+            background: isDark ? 'rgba(15, 23, 42, 0.9)' : 'rgba(255, 255, 255, 0.95)',
+            borderBottom: '1px solid var(--border-light)'
+          }}
+        >
+          <button
+            onClick={handleRefreshPrices}
+            className="p-2.5 rounded-lg flex-shrink-0 transition-all"
+            style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-default)' }}
+          >
+            <Globe size={20} className={isRefreshing ? 'animate-spin' : ''} style={{ color: isRefreshing ? '#3B82F6' : 'var(--text-secondary)' }} />
           </button>
-          <button onClick={() => handleAddAsset('Stock')} className="px-4 py-2 border rounded-lg bg-slate-50 text-sm font-medium flex-shrink-0">
-            + Add
+          <button
+            onClick={() => handleAddAsset('Stock')}
+            className="px-4 py-2 rounded-lg text-sm font-medium flex-shrink-0"
+            style={{ background: 'var(--bg-tertiary)', color: 'var(--text-primary)', border: '1px solid var(--border-default)' }}
+          >
+            + 添加
           </button>
-          <button onClick={handleAiAnalysis} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={handleAiAnalysis}
+            className="px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 flex-shrink-0"
+            style={{
+              background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)',
+              color: 'white'
+            }}
+          >
             <Sparkles size={16} /> AI
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth bg-slate-50/50">
+        <div
+          className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth"
+          style={{ background: 'var(--bg-secondary)' }}
+        >
           <div className="container mx-auto max-w-full space-y-8">
             {activeTab === 'dashboard' && (
               <Dashboard
