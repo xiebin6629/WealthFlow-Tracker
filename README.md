@@ -7,9 +7,9 @@
 [![React](https://img.shields.io/badge/React-19.2.0-61DAFB?logo=react&logoColor=white)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.2-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![TailwindCSS](https://img.shields.io/badge/TailwindCSS-CDN-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+[![Firebase](https://img.shields.io/badge/Firebase-Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
 
-[功能特性](#-功能特性) • [快速开始](#-快速开始) • [技术栈](#-技术栈) • [项目结构](#-项目结构) • [使用指南](#-使用指南)
+[在线演示](https://xiebin6629.github.io/WealthFlow-Tracker/) • [功能特性](#-功能特性) • [快速开始](#-快速开始) • [使用指南](#-使用指南)
 
 </div>
 
@@ -18,6 +18,13 @@
 ## 📖 简介
 
 **WealthFlow Tracker** 是一款专为投资者设计的个人财富管理应用，帮助您追踪投资组合、规划财务自由目标，并利用 AI 获取智能投资分析。支持多种资产类别（ETF、股票、加密货币、公积金等），提供实时价格更新、投资组合再平衡建议以及 FIRE 目标预测。
+
+### 🌟 核心亮点
+
+- 🔥 **Firebase 云同步** - 手机电脑数据实时同步
+- 🤖 **Gemini AI** - 一键获取实时股价和投资分析
+- 📊 **FIRE 规划** - 预测财务自由达成时间
+- 🆓 **完全免费** - 无需后端服务器，零成本部署
 
 ## ✨ 功能特性
 
@@ -41,18 +48,12 @@
 ### 🤖 AI 智能分析
 - **Gemini AI 集成** - 利用 Google Gemini 获取实时市场数据
 - **投资组合分析** - AI 驱动的投资建议和市场洞察
-- **数据来源追踪** - 显示 AI 分析的信息来源
+- **用户自备 API Key** - 免费使用，每个用户独立配额
 
 ### ☁️ 数据同步与备份
-- **🔥 Firebase 实时同步（新）** - 多设备实时数据同步，手机电脑无缝切换
-- **Google Drive 云备份** - 安全保存数据到您的 Google Drive
+- **🔥 Firebase 实时同步** - 多设备实时数据同步，手机电脑无缝切换
 - **本地数据导出/导入** - JSON 格式备份与恢复
-- **本地存储** - 数据自动保存到浏览器本地存储
-
-### 🌐 无服务器部署支持
-- **GitHub Pages 部署** - 免费托管静态网站
-- **Cloudflare Workers 代理** - 安全调用 AI API，不暴露密钥
-- **多来源股价数据** - 支持 Gemini AI、Yahoo Finance、CoinGecko 等
+- **自动本地保存** - 数据自动保存到浏览器本地存储
 
 ### 📈 年度记录追踪
 - **历史投资记录** - 记录每年的投资、储蓄和公积金金额
@@ -61,47 +62,52 @@
 
 ## 🚀 快速开始
 
-### 环境要求
+### 在线使用（推荐）
 
-- **Node.js** 18.0 或更高版本
-- **npm** 或 **yarn** 包管理器
-- **Gemini API Key** - 用于 AI 功能（可选）
+直接访问：**https://xiebin6629.github.io/WealthFlow-Tracker/**
 
-### 安装步骤
-
-1. **克隆仓库**
-   ```bash
-   git clone https://github.com/your-username/wealthflow-tracker.git
-   cd wealthflow-tracker
-   ```
-
-2. **安装依赖**
-   ```bash
-   npm install
-   ```
-
-3. **配置 API 密钥**
-   
-   在 `.env.local` 文件中设置您的 Gemini API 密钥：
-   ```env
-   GEMINI_API_KEY=your_gemini_api_key_here
-   ```
-
-4. **启动开发服务器**
-   ```bash
-   npm run dev
-   ```
-
-5. **访问应用**
-   
-   打开浏览器访问 `http://localhost:5173`
-
-### 构建生产版本
+### 本地开发
 
 ```bash
-npm run build
-npm run preview
+# 克隆仓库
+git clone https://github.com/xiebin6629/WealthFlow-Tracker.git
+cd WealthFlow-Tracker
+
+# 安装依赖
+npm install
+
+# 启动开发服务器
+npm run dev
 ```
+
+访问 `http://localhost:3000`
+
+## 📚 使用指南
+
+### 第一步：获取 Gemini API Key（免费）
+
+1. 访问 **[Google AI Studio](https://aistudio.google.com/app/apikey)**
+2. 使用 Google 账号登录
+3. 点击 **"Create API Key"**
+4. 复制生成的 Key
+
+### 第二步：配置应用
+
+1. 打开应用，在左侧边栏找到 **"Global Settings"**
+2. 在 **"Gemini API Key"** 输入框粘贴您的 Key
+3. 设置财务自由目标金额等参数
+
+### 第三步：启用云同步（可选）
+
+1. 在 **"Firebase 云同步"** 区域
+2. 点击 **"使用 Google 登录"**
+3. 授权完成后，数据将自动同步到云端
+
+### 第四步：开始使用
+
+- 点击 **"+ Add Asset"** 添加您的资产
+- 点击 **"Refresh Prices"** 获取实时价格
+- 点击 **"AI Analyst"** 获取投资分析
 
 ## 🛠️ 技术栈
 
@@ -112,10 +118,8 @@ npm run preview
 | **Vite** | 下一代前端构建工具 |
 | **TailwindCSS** | 实用优先的 CSS 框架 |
 | **Recharts** | React 图表库 |
-| **Lucide React** | 现代图标库 |
 | **Firebase** | 实时数据库 + 身份认证 |
 | **Google Gemini** | AI 智能分析服务 |
-| **Cloudflare Workers** | API 代理服务 |
 | **GitHub Pages** | 静态网站托管 |
 
 ## 📁 项目结构
@@ -126,71 +130,36 @@ WealthFlow-Tracker/
 │   ├── AssetTable.tsx      # 资产列表与管理
 │   ├── Dashboard.tsx       # 仪表盘概览
 │   ├── FireProjection.tsx  # FIRE 预测计算器
-│   ├── RebalanceView.tsx   # 再平衡建议视图
+│   ├── FirebaseSyncPanel.tsx # Firebase 同步面板
 │   └── YearlyRecords.tsx   # 年度记录管理
 ├── services/               # 外部服务集成
-│   ├── driveService.ts     # Google Drive 同步
 │   ├── firebaseService.ts  # Firebase 实时数据库
-│   ├── priceService.ts     # 股价获取服务
 │   └── geminiService.ts    # Gemini AI 服务
-├── cloudflare-worker/      # Cloudflare Worker 代码
-│   ├── src/index.ts        # Worker 入口
-│   └── wrangler.toml       # Wrangler 配置
 ├── .github/workflows/      # GitHub Actions
 │   └── deploy.yml          # 自动部署工作流
 ├── App.tsx                 # 主应用组件
+├── firebase.config.ts      # Firebase 配置
 ├── types.ts                # TypeScript 类型定义
-├── constants.ts            # 初始配置与常量
-├── index.html              # HTML 入口
-├── index.tsx               # React 入口
-├── index.css               # 全局样式
-├── vite.config.ts          # Vite 配置
 └── package.json            # 项目依赖
 ```
 
-## 📚 使用指南
-
-### 添加资产
-
-1. 导航到 **资产** 标签页
-2. 点击 **添加资产** 按钮
-3. 填写资产信息：代码、名称、类别、币种、数量、平均成本等
-4. 设置目标配置比例（可选）
-5. 保存更改
-
-### 设置 FIRE 目标
-
-1. 进入 **设置** 或 **FIRE 预测** 页面
-2. 配置财务自由目标金额
-3. 设置当前年龄、月投资额、预期收益率
-4. 查看预测的财务自由达成时间
-
-### 获取 AI 分析
-
-1. 确保已配置 Gemini API 密钥
-2. 点击 **刷新价格** 更新所有资产的当前价格
-3. 点击 **AI 分析** 获取投资组合的智能分析报告
-
-### 云同步数据
-
-1. 点击 **登录 Google** 连接您的 Google 账户
-2. 使用 **保存到云端** 备份数据
-3. 使用 **从云端加载** 恢复数据
-
 ## 🔒 隐私与安全
 
-- 所有数据默认存储在您的浏览器本地
-- 云同步数据仅保存到您自己的 Google Drive
-- 支持隐私模式隐藏敏感数值
-- API 密钥仅在本地使用，不会上传到任何服务器
+- ✅ 所有数据默认存储在您的浏览器本地
+- ✅ 云同步数据仅保存到您自己的 Firebase 账户
+- ✅ API Key 存储在您自己的浏览器/账户中，不会上传到任何第三方
+- ✅ 支持隐私模式隐藏敏感数值
+- ✅ 开源代码，完全透明
 
-## 🚀 部署到 GitHub Pages
+## 💰 费用说明
 
-详细的部署指南请参阅 **[DEPLOYMENT.md](DEPLOYMENT.md)**，包括：
+| 服务 | 费用 |
+|------|------|
+| **GitHub Pages** | 🆓 免费 |
+| **Firebase Firestore** | 🆓 免费（每天 20K 读写） |
+| **Gemini API** | 🆓 免费（每天 1500 次请求） |
 
-1. 配置 Firebase 实现多设备数据同步
-2. 部署 Cloudflare Worker 获取实时股价
-3. 部署应用到 GitHub Pages
+**结论：个人使用完全免费！**
 
 ## 📄 许可证
 
@@ -201,5 +170,7 @@ WealthFlow-Tracker/
 <div align="center">
 
 **用 ❤️ 构建，助您实现财务自由**
+
+[⭐ Star this repo](https://github.com/xiebin6629/WealthFlow-Tracker) if you find it useful!
 
 </div>
