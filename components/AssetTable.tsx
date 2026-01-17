@@ -51,15 +51,15 @@ interface ColumnDef {
 }
 
 const DEFAULT_COLUMNS: ColumnDef[] = [
-  { key: 'symbol', label: 'Asset', align: 'left', width: 'min-w-[200px]' },
-  { key: 'category', label: 'Category', align: 'left' },
-  { key: 'currentPrice', label: 'Price / Monthly', align: 'left' },
-  { key: 'quantity', label: 'Qty / Start', align: 'left' },
-  { key: 'totalCostOriginal', label: 'Total Cost / Base', align: 'left' },
-  { key: 'currentValueUsd', label: 'Value (USD)', align: 'right' },
-  { key: 'currentValueMyr', label: 'Value (RM)', align: 'right' },
-  { key: 'currentAllocationPercent', label: 'Alloc %', align: 'center' },
-  { key: 'targetAllocation', label: 'Target %', align: 'center' },
+  { key: 'symbol', label: '资产', align: 'left', width: 'min-w-[200px]' },
+  { key: 'category', label: '类别', align: 'left' },
+  { key: 'currentPrice', label: '价格 / 月供', align: 'left' },
+  { key: 'quantity', label: '数量 / 开始', align: 'left' },
+  { key: 'totalCostOriginal', label: '成本 / 基数', align: 'left' },
+  { key: 'currentValueUsd', label: '市值 (USD)', align: 'right' },
+  { key: 'currentValueMyr', label: '市值 (RM)', align: 'right' },
+  { key: 'currentAllocationPercent', label: '占比 %', align: 'center' },
+  { key: 'targetAllocation', label: '目标 %', align: 'center' },
 ];
 
 const STORAGE_KEY_COL_ORDER = 'WF_COL_ORDER';
@@ -69,7 +69,7 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
   const [editValues, setEditValues] = useState<EditValues | null>(null);
   const [topUpState, setTopUpState] = useState<TopUpValues | null>(null);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'currentValueMyr', direction: 'desc' });
-  
+
   // Custom Delete Modal State
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -89,7 +89,7 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
     }
     return DEFAULT_COLUMNS.map(c => c.key);
   });
-  
+
   const [draggedColumn, setDraggedColumn] = useState<ColumnKey | null>(null);
 
   // Save column order whenever it changes
@@ -118,7 +118,7 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
       const bValue = b[sortConfig.key];
 
       if (aValue === bValue) return 0;
-      
+
       const comparison = aValue > bValue ? 1 : -1;
       return sortConfig.direction === 'asc' ? comparison : -comparison;
     });
@@ -215,16 +215,16 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
     if (editingId && editValues) {
       const isCash = isCashLike(editValues.category);
       const isPen = isPension(editValues.category);
-      
-      const newAverageCost = isCash 
-        ? 1 
+
+      const newAverageCost = isCash
+        ? 1
         : (editValues.quantity > 0 ? editValues.totalCostOriginal / editValues.quantity : 0);
 
       const updates: Partial<Asset> = {
         symbol: editValues.symbol,
         name: editValues.name,
         currentPrice: isCash ? 1 : editValues.currentPrice,
-        quantity: isPen ? 0 : editValues.quantity, 
+        quantity: isPen ? 0 : editValues.quantity,
         averageCost: newAverageCost,
         targetAllocation: editValues.targetAllocation,
         category: editValues.category
@@ -237,7 +237,7 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
           startDate: editValues.pensionStart || new Date().toISOString().split('T')[0]
         };
       } else {
-        updates.pensionConfig = undefined; 
+        updates.pensionConfig = undefined;
       }
 
       onUpdateAsset(editingId, updates);
@@ -294,20 +294,20 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
       case 'symbol':
         return isEditing ? (
           <div className="flex flex-col gap-1">
-            <input 
-              value={editValues!.symbol} 
-              onChange={(e) => setEditValues({...editValues!, symbol: e.target.value.toUpperCase()})}
+            <input
+              value={editValues!.symbol}
+              onChange={(e) => setEditValues({ ...editValues!, symbol: e.target.value.toUpperCase() })}
               className="font-bold text-lg text-slate-900 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-0.5"
               placeholder="SYMBOL"
             />
-            <input 
-              value={editValues!.name} 
-              onChange={(e) => setEditValues({...editValues!, name: e.target.value})}
+            <input
+              value={editValues!.name}
+              onChange={(e) => setEditValues({ ...editValues!, name: e.target.value })}
               className="text-xs text-slate-700 border-b border-slate-300 focus:border-blue-500 focus:outline-none bg-transparent w-full pb-0.5"
               placeholder="Asset Name"
             />
             <div className="flex gap-2 mt-1">
-              <select 
+              <select
                 className="text-xs border rounded p-1 bg-white"
                 value={asset.currency}
                 onChange={(e) => onUpdateAsset(asset.id, { currency: e.target.value as any })}
@@ -329,22 +329,22 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
 
       case 'category':
         return isEditing ? (
-          <select 
+          <select
             className="text-sm border rounded p-2 max-w-[140px] bg-white"
             value={editValues!.category}
             onChange={(e) => {
-                if (!editValues) return;
-                const newCat = e.target.value as any;
-                const newIsCash = isCashLike(newCat);
-                const newIsPen = isPension(newCat);
-                let updates: Partial<EditValues> = { category: newCat };
-                
-                if (newIsPen) {
-                  updates = { ...updates, pensionBase: editValues.totalCostOriginal || 0, pensionMonthly: 0, pensionStart: new Date().toISOString().split('T')[0] };
-                } else if (newIsCash) {
-                    updates = { ...updates, currentPrice: 1, quantity: editValues.totalCostOriginal };
-                }
-                setEditValues({ ...editValues, ...updates });
+              if (!editValues) return;
+              const newCat = e.target.value as any;
+              const newIsCash = isCashLike(newCat);
+              const newIsPen = isPension(newCat);
+              let updates: Partial<EditValues> = { category: newCat };
+
+              if (newIsPen) {
+                updates = { ...updates, pensionBase: editValues.totalCostOriginal || 0, pensionMonthly: 0, pensionStart: new Date().toISOString().split('T')[0] };
+              } else if (newIsCash) {
+                updates = { ...updates, currentPrice: 1, quantity: editValues.totalCostOriginal };
+              }
+              setEditValues({ ...editValues, ...updates });
             }}
           >
             <option value="Stock">Stock</option>
@@ -369,16 +369,16 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
               <input type="number" className="w-24 p-2 border border-slate-300 rounded text-sm" value={editValues!.pensionMonthly} onChange={(e) => setEditValues({ ...editValues!, pensionMonthly: parseFloat(e.target.value) || 0 })} />
             </div>
           ) : isCash ? (
-              <span className="text-slate-400 font-mono">1.00</span>
+            <span className="text-slate-400 font-mono">1.00</span>
           ) : (
             <input type="number" className="w-24 p-2 border border-slate-300 rounded text-sm" value={editValues!.currentPrice} onChange={(e) => setEditValues({ ...editValues!, currentPrice: parseFloat(e.target.value) || 0 })} />
           )
         ) : (
           <div className="text-slate-700 font-medium">
             {isPen ? (
-                <div title="Monthly Contribution"><span className="text-xs text-slate-400 mr-1">/mo</span>{isPrivacyMode ? '****' : asset.pensionConfig?.monthlyContribution?.toLocaleString()}</div>
+              <div title="Monthly Contribution"><span className="text-xs text-slate-400 mr-1">/mo</span>{isPrivacyMode ? '****' : asset.pensionConfig?.monthlyContribution?.toLocaleString()}</div>
             ) : (
-                isPrivacyMode ? '****' : asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })
+              isPrivacyMode ? '****' : asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })
             )}
           </div>
         );
@@ -387,11 +387,11 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
         return isEditing ? (
           isPen ? (
             <div>
-                <span className="text-[10px] text-slate-400 uppercase">Start Date</span>
-                <input type="date" className="w-32 p-2 border border-slate-300 rounded text-sm" value={editValues!.pensionStart} onChange={(e) => setEditValues({ ...editValues!, pensionStart: e.target.value })} />
+              <span className="text-[10px] text-slate-400 uppercase">Start Date</span>
+              <input type="date" className="w-32 p-2 border border-slate-300 rounded text-sm" value={editValues!.pensionStart} onChange={(e) => setEditValues({ ...editValues!, pensionStart: e.target.value })} />
             </div>
           ) : isCash ? (
-              <span className="text-slate-400">-</span>
+            <span className="text-slate-400">-</span>
           ) : (
             <input type="number" className="w-24 p-2 border border-slate-300 rounded text-sm" value={editValues!.quantity} onChange={(e) => setEditValues({ ...editValues!, quantity: parseFloat(e.target.value) || 0 })} />
           )
@@ -408,27 +408,27 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
           <div className="flex flex-col">
             <span className="text-[10px] text-slate-400 uppercase font-bold">{isPen ? 'Base Amount' : asset.currency}</span>
             {isPen ? (
-                <input type="number" className="w-28 p-2 border border-slate-300 rounded text-sm" value={editValues!.pensionBase} onChange={(e) => setEditValues({ ...editValues!, pensionBase: parseFloat(e.target.value) || 0 })} />
+              <input type="number" className="w-28 p-2 border border-slate-300 rounded text-sm" value={editValues!.pensionBase} onChange={(e) => setEditValues({ ...editValues!, pensionBase: parseFloat(e.target.value) || 0 })} />
             ) : (
-              <input type="number" className="w-28 p-2 border border-slate-300 rounded text-sm" value={editValues!.totalCostOriginal} 
+              <input type="number" className="w-28 p-2 border border-slate-300 rounded text-sm" value={editValues!.totalCostOriginal}
                 onChange={(e) => {
-                    const val = parseFloat(e.target.value) || 0;
-                    if (isCashLike(editValues!.category) && !isPen) {
-                        setEditValues({ ...editValues!, totalCostOriginal: val, quantity: val });
-                    } else {
-                        setEditValues({ ...editValues!, totalCostOriginal: val });
-                    }
+                  const val = parseFloat(e.target.value) || 0;
+                  if (isCashLike(editValues!.category) && !isPen) {
+                    setEditValues({ ...editValues!, totalCostOriginal: val, quantity: val });
+                  } else {
+                    setEditValues({ ...editValues!, totalCostOriginal: val });
+                  }
                 }}
               />
             )}
           </div>
         ) : (
           <div className="text-slate-600 font-medium">
-              {isPen ? (
-                <div><span className="text-xs text-slate-400 mr-1">Base</span>{isPrivacyMode ? '****' : asset.pensionConfig?.baseAmount?.toLocaleString()}</div>
-              ) : (
-                <><span className="text-xs text-slate-400 mr-1">{asset.currency}</span>{isPrivacyMode ? '****' : asset.totalCostOriginal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
-              )}
+            {isPen ? (
+              <div><span className="text-xs text-slate-400 mr-1">Base</span>{isPrivacyMode ? '****' : asset.pensionConfig?.baseAmount?.toLocaleString()}</div>
+            ) : (
+              <><span className="text-xs text-slate-400 mr-1">{asset.currency}</span>{isPrivacyMode ? '****' : asset.totalCostOriginal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</>
+            )}
           </div>
         );
 
@@ -447,33 +447,48 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
         ) : (
           <div className="text-slate-500 font-medium">{asset.targetAllocation}%</div>
         );
-        
+
       default:
         return null;
     }
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8 relative">
+    <div
+      className="rounded-2xl shadow-lg overflow-hidden mb-8 relative"
+      style={{
+        background: 'var(--card-bg)',
+        border: '1px solid var(--card-border)',
+        backdropFilter: 'blur(12px)'
+      }}
+    >
       {title && (
-        <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+        <div
+          className="px-6 py-4 flex items-center justify-between"
+          style={{ borderBottom: '1px solid var(--border-light)', background: 'var(--bg-tertiary)' }}
+        >
           <div className="flex items-center gap-3">
-            <Layers className="text-slate-400" size={20} />
-            <h3 className="text-lg font-bold text-slate-800">{title}</h3>
+            <Layers size={20} style={{ color: 'var(--primary-500)' }} />
+            <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>{title}</h3>
           </div>
           {onAddAsset && (
-            <button 
+            <button
               onClick={onAddAsset}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-300 hover:border-blue-400 hover:text-blue-600 rounded-lg text-sm font-medium transition-all shadow-sm"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all hover:scale-105"
+              style={{
+                background: 'var(--bg-elevated)',
+                border: '1px solid var(--border-default)',
+                color: 'var(--text-primary)'
+              }}
             >
-              <Plus size={16} /> Add
+              <Plus size={16} /> 添加
             </button>
           )}
         </div>
       )}
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-slate-600">
-          <thead className="text-sm font-bold text-slate-800 uppercase bg-slate-50 border-b border-slate-200 tracking-wide">
+        <table className="w-full text-left" style={{ color: 'var(--text-secondary)' }}>
+          <thead style={{ background: 'var(--bg-tertiary)', borderBottom: '1px solid var(--border-light)' }}>
             <tr>
               {columnOrder.map((colKey) => {
                 const colDef = DEFAULT_COLUMNS.find(c => c.key === colKey);
@@ -520,14 +535,14 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
               return (
                 <tr key={asset.id} className={`transition-colors ${isEditing ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}>
                   {columnOrder.map(colKey => {
-                     const colDef = DEFAULT_COLUMNS.find(c => c.key === colKey);
-                     return (
-                       <td key={colKey} className={`px-6 py-4 ${colDef?.align === 'right' ? 'text-right' : colDef?.align === 'center' ? 'text-center' : 'text-left'}`}>
-                         {renderCell(asset, colKey)}
-                       </td>
-                     );
+                    const colDef = DEFAULT_COLUMNS.find(c => c.key === colKey);
+                    return (
+                      <td key={colKey} className={`px-6 py-4 ${colDef?.align === 'right' ? 'text-right' : colDef?.align === 'center' ? 'text-center' : 'text-left'}`}>
+                        {renderCell(asset, colKey)}
+                      </td>
+                    );
                   })}
-                  
+
                   {/* Fixed Actions Column */}
                   <td className="px-6 py-4 text-center">
                     <div className="flex items-center justify-center gap-1.5">
@@ -536,7 +551,7 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
                           <button onClick={handleDoneEdit} className="p-1.5 text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors shadow-sm">
                             <Check size={18} />
                           </button>
-                           <button onClick={handleCancelEdit} className="p-1.5 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors shadow-sm">
+                          <button onClick={handleCancelEdit} className="p-1.5 text-slate-500 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors shadow-sm">
                             <X size={18} />
                           </button>
                         </>
@@ -550,8 +565,8 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
                           <button onClick={() => handleEdit(asset)} className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                             <Edit2 size={18} />
                           </button>
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setDeleteId(asset.id); }} 
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteId(asset.id); }}
                             className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                           >
                             <Trash2 size={18} />
@@ -563,10 +578,10 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
                 </tr>
               );
             })}
-             {sortedAssets.length === 0 && (
+            {sortedAssets.length === 0 && (
               <tr>
-                <td colSpan={columnOrder.length + 1} className="px-6 py-8 text-center text-slate-400 italic">
-                  No assets in this category. Click 'Add' to start.
+                <td colSpan={columnOrder.length + 1} className="px-6 py-8 text-center italic" style={{ color: 'var(--text-muted)' }}>
+                  暂无资产数据。点击"添加"开始。
                 </td>
               </tr>
             )}
@@ -579,7 +594,7 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
                 {columnOrder.map((colKey, index) => {
                   const colDef = DEFAULT_COLUMNS.find(c => c.key === colKey);
                   let content = null;
-                  
+
                   if (colKey === 'totalCostOriginal') content = <>{fmt(totals.costMyr, 'MYR')}</>;
                   else if (colKey === 'currentValueUsd') content = <>{fmt(totals.valueUsd, 'USD')}</>;
                   else if (colKey === 'currentValueMyr') content = <>{fmt(totals.valueMyr, 'MYR')}</>;
@@ -596,21 +611,21 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
               {/* Extra row for Excluding EPF */}
               {hasPension && totalsExclPension && (
                 <tr className="bg-slate-50 border-t border-slate-200 text-slate-600">
-                   {columnOrder.map((colKey, index) => {
-                     const colDef = DEFAULT_COLUMNS.find(c => c.key === colKey);
-                     let content = null;
-                     if (colKey === 'totalCostOriginal') content = <>{fmt(totalsExclPension.costMyr, 'MYR')}</>;
-                     else if (colKey === 'currentValueUsd') content = <>{fmt(totalsExclPension.valueUsd, 'USD')}</>;
-                     else if (colKey === 'currentValueMyr') content = <>{fmt(totalsExclPension.valueMyr, 'MYR')}</>;
-                     else if (index === 0) content = <span className="uppercase text-xs tracking-wider text-slate-400">Total (Excl. EPF)</span>;
+                  {columnOrder.map((colKey, index) => {
+                    const colDef = DEFAULT_COLUMNS.find(c => c.key === colKey);
+                    let content = null;
+                    if (colKey === 'totalCostOriginal') content = <>{fmt(totalsExclPension.costMyr, 'MYR')}</>;
+                    else if (colKey === 'currentValueUsd') content = <>{fmt(totalsExclPension.valueUsd, 'USD')}</>;
+                    else if (colKey === 'currentValueMyr') content = <>{fmt(totalsExclPension.valueMyr, 'MYR')}</>;
+                    else if (index === 0) content = <span className="uppercase text-xs tracking-wider text-slate-400">Total (Excl. EPF)</span>;
 
-                     return (
-                        <td key={colKey} className={`px-6 py-3 ${colDef?.align === 'right' ? 'text-right' : colDef?.align === 'center' ? 'text-center' : 'text-left'}`}>
-                          {content}
-                        </td>
-                     )
-                   })}
-                   <td></td>
+                    return (
+                      <td key={colKey} className={`px-6 py-3 ${colDef?.align === 'right' ? 'text-right' : colDef?.align === 'center' ? 'text-center' : 'text-left'}`}>
+                        {content}
+                      </td>
+                    )
+                  })}
+                  <td></td>
                 </tr>
               )}
             </tfoot>
@@ -633,8 +648,8 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
             <div className="p-6 space-y-4">
               {isCashLike(topUpState.asset.category) ? (
                 <div>
-                   <label className="block text-sm font-semibold text-slate-700 mb-1">Amount to Add ({topUpState.asset.currency})</label>
-                   <input type="number" autoFocus className="w-full text-lg p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Amount to Add ({topUpState.asset.currency})</label>
+                  <input type="number" autoFocus className="w-full text-lg p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                     placeholder="e.g. 5000" value={topUpState.addedQuantity} onChange={(e) => setTopUpState({ ...topUpState, addedQuantity: e.target.value })} />
                 </div>
               ) : (
@@ -667,35 +682,35 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
 
       {/* Delete Confirmation Modal */}
       {deleteId && (
-         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 scale-100 transform transition-all">
-                <div className="flex flex-col items-center text-center gap-4">
-                    <div className="p-3 bg-amber-100 rounded-full text-amber-600">
-                        <AlertTriangle size={32} />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-900">Remove Asset?</h3>
-                        <p className="text-sm text-slate-500 mt-1">
-                            Are you sure you want to remove this asset from your portfolio? 
-                            This action cannot be undone.
-                        </p>
-                    </div>
-                    <div className="flex gap-3 w-full mt-2">
-                        <button 
-                            onClick={() => setDeleteId(null)}
-                            className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            onClick={() => { onDeleteAsset(deleteId); setDeleteId(null); }}
-                            className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition-colors shadow-sm"
-                        >
-                            Remove
-                        </button>
-                    </div>
-                </div>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 scale-100 transform transition-all">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="p-3 bg-amber-100 rounded-full text-amber-600">
+                <AlertTriangle size={32} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Remove Asset?</h3>
+                <p className="text-sm text-slate-500 mt-1">
+                  Are you sure you want to remove this asset from your portfolio?
+                  This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex gap-3 w-full mt-2">
+                <button
+                  onClick={() => setDeleteId(null)}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { onDeleteAsset(deleteId); setDeleteId(null); }}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-lg transition-colors shadow-sm"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
+          </div>
         </div>
       )}
 
