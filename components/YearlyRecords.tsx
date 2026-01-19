@@ -36,6 +36,7 @@ const YearlyRecords: React.FC<YearlyRecordsProps> = ({
   const [formInvest, setFormInvest] = useState<string>('');
   const [formSaving, setFormSaving] = useState<string>('');
   const [formEpf, setFormEpf] = useState<string>('');
+  const [formIncome, setFormIncome] = useState<string>('');
   const [formVoo, setFormVoo] = useState<string>('');
   const [formNote, setFormNote] = useState<string>('');
 
@@ -74,6 +75,7 @@ const YearlyRecords: React.FC<YearlyRecordsProps> = ({
       investAmount: parseFloat(formInvest) || 0,
       savingAmount: parseFloat(formSaving) || 0,
       epfAmount: parseFloat(formEpf) || 0,
+      income: parseFloat(formIncome) || undefined,
       vooReturn: formVoo ? parseFloat(formVoo) : undefined,
       note: formNote,
       dateRecorded: new Date().toISOString()
@@ -102,6 +104,7 @@ const YearlyRecords: React.FC<YearlyRecordsProps> = ({
     setFormInvest('');
     setFormSaving('');
     setFormEpf('');
+    setFormIncome('');
     setFormVoo('');
     setFormNote('');
   };
@@ -113,6 +116,7 @@ const YearlyRecords: React.FC<YearlyRecordsProps> = ({
     setFormInvest(rec.investAmount.toString());
     setFormSaving(rec.savingAmount.toString());
     setFormEpf(rec.epfAmount.toString());
+    setFormIncome(rec.income !== undefined ? rec.income.toString() : '');
     setFormVoo(rec.vooReturn !== undefined ? rec.vooReturn.toString() : '');
     setFormNote(rec.note || '');
 
@@ -234,6 +238,17 @@ const YearlyRecords: React.FC<YearlyRecordsProps> = ({
             </div>
 
             <div>
+              <label className="block text-xs font-bold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>年度净收入 (Net Income)</label>
+              <input
+                type="number" step="0.01"
+                value={formIncome}
+                onChange={e => setFormIncome(e.target.value)}
+                placeholder="可选: 用于计算储蓄率"
+                className="input"
+              />
+            </div>
+
+            <div>
               <label className="block text-xs font-bold uppercase mb-1" style={{ color: 'var(--text-secondary)' }}>投资金额 (Investment)</label>
               <input
                 type="number" step="0.01"
@@ -347,6 +362,7 @@ const YearlyRecords: React.FC<YearlyRecordsProps> = ({
                 <th className="px-6 py-4 text-right hidden md:table-cell text-blue-500">投资</th>
                 <th className="px-6 py-4 text-right hidden md:table-cell text-emerald-500">储蓄</th>
                 <th className="px-6 py-4 text-right hidden md:table-cell text-indigo-500">EPF</th>
+                <th className="px-6 py-4 text-right hidden md:table-cell">储蓄率</th>
                 <th className="px-6 py-4">备注</th>
                 <th className="px-6 py-4 text-center">操作</th>
               </tr>
@@ -397,6 +413,13 @@ const YearlyRecords: React.FC<YearlyRecordsProps> = ({
                     </td>
                     <td className="px-6 py-4 text-right hidden md:table-cell" style={{ color: 'var(--text-secondary)' }}>
                       {isPrivacyMode ? '****' : record.epfAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </td>
+                    <td className="px-6 py-4 text-right hidden md:table-cell font-mono">
+                      {record.income ? (
+                        <span style={{ color: ((record.investAmount + record.savingAmount) / record.income) >= 0.3 ? 'var(--success-500)' : 'var(--text-muted)' }}>
+                          {(((record.investAmount + record.savingAmount) / record.income) * 100).toFixed(1)}%
+                        </span>
+                      ) : '-'}
                     </td>
                     <td className="px-6 py-4 max-w-[200px] truncate" style={{ color: 'var(--text-muted)' }}>
                       {record.note ? (

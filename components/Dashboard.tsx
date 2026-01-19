@@ -1,15 +1,27 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { PortfolioMetrics, ComputedAsset, GroundingSource } from '../types';
-import { DollarSign, Activity, ExternalLink, ArrowUp, ArrowDown, ArrowUpDown, TrendingUp, TrendingDown, GripVertical, Wallet, Target, PiggyBank, BarChart3 } from 'lucide-react';
+import { PortfolioMetrics, ComputedAsset, GroundingSource, YearlyRecord } from '../types';
+import { DollarSign, Activity, ExternalLink, ArrowUp, ArrowDown, ArrowUpDown, TrendingUp, TrendingDown, GripVertical, Wallet, Target, PiggyBank, BarChart3, Calendar } from 'lucide-react';
+import AllocationChart from './AllocationChart';
+import NetWorthTrendChart from './NetWorthTrendChart';
+import ReturnsComparisonChart from './ReturnsComparisonChart';
+import GoalProgressCard from './GoalProgressCard';
+import DeviationAlertCard from './DeviationAlertCard';
+import CurrencyDistributionChart from './CurrencyDistributionChart';
+import CategoryPerformanceChart from './CategoryPerformanceChart';
 
 interface DashboardProps {
   metrics: PortfolioMetrics;
   assets: ComputedAsset[];
   financialFreedomTarget: number;
   savingTarget: number;
+  monthlyInvestmentTarget?: number;
+  annualInvestmentTarget?: number;
+  exchangeRate?: number;
   dataSources: GroundingSource[];
   isPrivacyMode: boolean;
+  yearlyRecords?: YearlyRecord[];
+  dividendYieldPercent?: number;
 }
 
 type SortKey = 'symbol' | 'currentValueMyr' | 'currentValueUsd' | 'totalCostMyr' | 'totalCostUsd' | 'profitLossMyr' | 'profitLossUsd' | 'profitLossPercent';
@@ -36,7 +48,7 @@ const DEFAULT_DASHBOARD_COLUMNS: DashboardColumnDef[] = [
 
 const STORAGE_KEY_DASH_COL_ORDER = 'WF_DASH_COL_ORDER';
 
-const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedomTarget, savingTarget, dataSources, isPrivacyMode }) => {
+const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedomTarget, savingTarget, monthlyInvestmentTarget = 0, annualInvestmentTarget = 0, exchangeRate = 4.42, dataSources, isPrivacyMode, yearlyRecords, dividendYieldPercent = 0 }) => {
 
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({
     key: 'profitLossMyr',
@@ -196,7 +208,7 @@ const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedom
   return (
     <div className="space-y-8">
       {/* Top Cards - 顶部统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
 
         {/* 总净资产 */}
         <div
@@ -364,7 +376,116 @@ const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedom
             </div>
           )}
         </div>
+
+        {/* Passive Income - 被动收入估算 */}
+        <div
+          className="p-6 md:p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+          style={cardStyle}
+        >
+          <div className="absolute top-4 right-4 opacity-10">
+            <DollarSign size={50} style={{ color: 'var(--success-500)' }} />
+          </div>
+
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+            预估被动收入 (年)
+          </p>
+
+          <div className="mt-2">
+            <h3 className="text-2xl md:text-3xl font-extrabold gradient-text">
+              {isPrivacyMode ? 'RM ****' : `RM ${(metrics.investedNetWorth * (dividendYieldPercent / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+            </h3>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
+              基于 {dividendYieldPercent}% 年化收益率
+            </p>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-700/50">
+            <div className="flex justify-between items-center text-xs">
+              <span style={{ color: 'var(--text-muted)' }}>月均收入</span>
+              <span className="font-bold font-mono" style={{ color: 'var(--success-500)' }}>
+                {isPrivacyMode ? 'RM ****' : `RM ${(metrics.investedNetWorth * (dividendYieldPercent / 100) / 12).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* Charts Section - 图表区域 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Asset Allocation Chart */}
+        <div className="lg:col-span-1">
+          <AllocationChart assets={assets} isPrivacyMode={isPrivacyMode} />
+        </div>
+
+        {/* Net Worth Trend Chart */}
+        <div className="lg:col-span-2">
+          {yearlyRecords && (
+            <NetWorthTrendChart records={yearlyRecords} isPrivacyMode={isPrivacyMode} />
+          )}
+        </div>
+      </div>
+
+      {/* Goal Progress Section - 目标追踪 */}
+      {(monthlyInvestmentTarget > 0 || annualInvestmentTarget > 0) && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+            <Target size={20} className="text-emerald-500" />
+            目标追踪
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {annualInvestmentTarget > 0 && yearlyRecords && yearlyRecords.length > 0 && (() => {
+              const currentYear = new Date().getFullYear();
+              const thisYearRecord = yearlyRecords.find(r => r.year === currentYear);
+              const currentInvested = thisYearRecord ? thisYearRecord.investAmount : 0;
+              return (
+                <GoalProgressCard
+                  title="年度投资目标"
+                  current={currentInvested}
+                  target={annualInvestmentTarget}
+                  icon={<Calendar size={18} className="text-indigo-500" />}
+                  colorClass="indigo"
+                  isPrivacyMode={isPrivacyMode}
+                />
+              );
+            })()}
+
+            <GoalProgressCard
+              title="储蓄目标"
+              current={metrics.savedNetWorth}
+              target={savingTarget}
+              icon={<PiggyBank size={18} className="text-emerald-500" />}
+              colorClass="emerald"
+              isPrivacyMode={isPrivacyMode}
+            />
+
+            <GoalProgressCard
+              title="FIRE 目标"
+              current={metrics.totalNetWorth}
+              target={financialFreedomTarget}
+              icon={<Target size={18} className="text-amber-500" />}
+              colorClass="amber"
+              isPrivacyMode={isPrivacyMode}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Returns Comparison Chart - 收益率对比 */}
+      {yearlyRecords && yearlyRecords.length >= 3 && (
+        <ReturnsComparisonChart yearlyRecords={yearlyRecords} isPrivacyMode={isPrivacyMode} />
+      )}
+
+      {/* Advanced Analysis Section - 高级分析 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Deviation Alert */}
+        <DeviationAlertCard assets={assets} isPrivacyMode={isPrivacyMode} threshold={5} />
+
+        {/* Currency Distribution */}
+        <CurrencyDistributionChart assets={assets} exchangeRate={exchangeRate} isPrivacyMode={isPrivacyMode} />
+      </div>
+
+      {/* Category Performance */}
+      <CategoryPerformanceChart assets={assets} isPrivacyMode={isPrivacyMode} />
 
       {/* 投资表现表格 */}
       <div
@@ -456,33 +577,34 @@ const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedom
       </div>
 
       {/* 数据来源 */}
-      {dataSources.length > 0 && (
-        <div
-          className="p-6 rounded-xl text-sm"
-          style={{
-            background: 'var(--bg-tertiary)',
-            border: '1px solid var(--border-light)',
-            color: 'var(--text-muted)'
-          }}
-        >
-          <p className="font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>市场数据来源 (Google Search):</p>
-          <ul className="flex flex-wrap gap-x-6 gap-y-2">
-            {dataSources.map((source, idx) => (
-              <li key={idx}>
-                <a
-                  href={source.uri}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:underline flex items-center gap-1.5 transition-colors"
-                  style={{ color: 'var(--primary-500)' }}
-                >
-                  {source.title} <ExternalLink size={12} />
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {
+        dataSources.length > 0 && (
+          <div
+            className="p-6 rounded-xl text-sm"
+            style={{
+              background: 'var(--bg-tertiary)',
+              border: '1px solid var(--border-light)',
+              color: 'var(--text-muted)'
+            }}
+          >
+            <p className="font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>市场数据来源 (Google Search):</p>
+            <ul className="flex flex-wrap gap-x-6 gap-y-2">
+              {dataSources.map((source, idx) => (
+                <li key={idx}>
+                  <a
+                    href={source.uri}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline flex items-center gap-1.5 transition-colors"
+                    style={{ color: 'var(--primary-500)' }}
+                  >
+                    {source.title} <ExternalLink size={12} />
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
     </div>
   );
 };

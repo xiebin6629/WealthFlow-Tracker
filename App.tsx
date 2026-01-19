@@ -1,15 +1,18 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Asset, ComputedAsset, GlobalSettings, PortfolioMetrics, GroundingSource, AssetCategory, FireProjectionSettings, YearlyRecord } from './types';
-import { INITIAL_ASSETS, INITIAL_SETTINGS, INITIAL_FIRE_SETTINGS } from './constants';
+import { Asset, ComputedAsset, GlobalSettings, PortfolioMetrics, GroundingSource, AssetCategory, FireProjectionSettings, YearlyRecord, DividendRecord, Loan } from './types';
+import { INITIAL_ASSETS, INITIAL_SETTINGS, INITIAL_FIRE_SETTINGS, INITIAL_YEARLY_RECORDS, INITIAL_DIVIDEND_RECORDS, INITIAL_LOANS } from './constants';
 import Dashboard from './components/Dashboard';
 import AssetTable from './components/AssetTable';
 import RebalanceView from './components/RebalanceView';
 import FireProjection from './components/FireProjection';
 import YearlyRecords from './components/YearlyRecords';
 import FirebaseSyncPanel from './components/FirebaseSyncPanel';
+import DividendTracker from './components/DividendTracker';
+import LoanTracker from './components/LoanTracker';
 import { UserData } from './services/firebaseService';
-import { LayoutDashboard, List, Settings, Sparkles, Plus, X, Globe, Menu, Eye, EyeOff, Download, Upload, Save, Database, TrendingUp, Cloud, CloudUpload, CloudDownload, LogOut, Loader2, FileJson, Clock, Key, Copy, AlertCircle, HelpCircle, Wrench, History, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { LayoutDashboard, List, Settings, Sparkles, Plus, X, Globe, Menu, Eye, EyeOff, Download, Upload, Save, Database, TrendingUp, TrendingDown, Cloud, CloudUpload, CloudDownload, LogOut, Loader2, FileJson, Clock, Key, Copy, AlertCircle, HelpCircle, Wrench, History, ArrowRight, CheckCircle2, FileSpreadsheet, Sun, Moon, DollarSign } from 'lucide-react';
+import SettingsPage from './components/SettingsPage';
 import { analyzePortfolio } from './services/geminiService';
 import { fetchPrices } from './services/priceService';
 
@@ -34,13 +37,31 @@ interface PriceUpdateLogItem {
 }
 
 const App: React.FC = () => {
-  // 主题切换
-  // 主题切换 - 强制浅色
-  const theme = 'light';
-  const isDark = false;
-  const toggleTheme = () => { };
+  // 主题切换 - 支持暗色模式
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('WF_THEME');
+    if (saved === 'dark' || saved === 'light') return saved;
+    // Follow system preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
+  });
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'projection' | 'history'>('dashboard');
+  const isDark = theme === 'dark';
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('WF_THEME', newTheme);
+  };
+
+  // Apply theme to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'projection' | 'history' | 'dividends' | 'loans' | 'settings'>('dashboard');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- State with LocalStorage Initialization ---
@@ -84,9 +105,27 @@ const App: React.FC = () => {
   const [yearlyRecords, setYearlyRecords] = useState<YearlyRecord[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEYS.YEARLY_RECORDS);
-      return saved ? JSON.parse(saved) : [];
+      return saved ? JSON.parse(saved) : INITIAL_YEARLY_RECORDS;
     } catch (e) {
-      return [];
+      return INITIAL_YEARLY_RECORDS;
+    }
+  });
+
+  const [dividendRecords, setDividendRecords] = useState<DividendRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('WF_DIVIDEND_RECORDS');
+      return saved ? JSON.parse(saved) : INITIAL_DIVIDEND_RECORDS;
+    } catch (e) {
+      return INITIAL_DIVIDEND_RECORDS;
+    }
+  });
+
+  const [loans, setLoans] = useState<Loan[]>(() => {
+    try {
+      const saved = localStorage.getItem('WF_LOANS');
+      return saved ? JSON.parse(saved) : INITIAL_LOANS;
+    } catch (e) {
+      return INITIAL_LOANS;
     }
   });
 
@@ -110,6 +149,25 @@ const App: React.FC = () => {
       });
       return hasChanges ? verified : prev;
     });
+
+    // Fire Projection Settings Persistence
+    try {
+      const savedFire = localStorage.getItem(STORAGE_KEYS.FIRE_SETTINGS);
+      if (savedFire) {
+        const parsedFire = JSON.parse(savedFire);
+        // Migration: If currentAge exists but birthYear doesn't, calculate birthYear
+        if (parsedFire.currentAge && !parsedFire.birthYear) {
+          console.log("Migrating Fire Settings: currentAge -> birthYear");
+          parsedFire.birthYear = new Date().getFullYear() - parsedFire.currentAge;
+          delete parsedFire.currentAge;
+        }
+        // Ensure newly added fields have defaults
+        if (!parsedFire.desiredMonthlySpending) parsedFire.desiredMonthlySpending = INITIAL_FIRE_SETTINGS.desiredMonthlySpending;
+        if (!parsedFire.withdrawalRate) parsedFire.withdrawalRate = INITIAL_FIRE_SETTINGS.withdrawalRate;
+
+        setFireSettings(parsedFire);
+      }
+    } catch (e) { console.error("Failed to load fire settings", e); }
   }, []);
 
   const [lastUpdated, setLastUpdated] = useState<Date | null>(() => {
@@ -188,6 +246,8 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.FIRE_SETTINGS, JSON.stringify(fireSettings));
     localStorage.setItem(STORAGE_KEYS.SOURCES, JSON.stringify(dataSources));
     localStorage.setItem(STORAGE_KEYS.YEARLY_RECORDS, JSON.stringify(yearlyRecords));
+    localStorage.setItem('WF_DIVIDEND_RECORDS', JSON.stringify(dividendRecords));
+    localStorage.setItem('WF_LOANS', JSON.stringify(loans));
     if (lastUpdated) {
       localStorage.setItem(STORAGE_KEYS.LAST_UPDATED, lastUpdated.toISOString());
     }
@@ -365,6 +425,28 @@ const App: React.FC = () => {
     });
   };
 
+  // Dividend Record Handlers
+  const handleAddDividend = (record: DividendRecord) => {
+    setDividendRecords(prev => [...prev, record]);
+  };
+
+  const handleDeleteDividend = (id: string) => {
+    setDividendRecords(prev => prev.filter(r => r.id !== id));
+  };
+
+  // Loan Handlers
+  const handleAddLoan = (loan: Loan) => {
+    setLoans(prev => [...prev, loan]);
+  };
+
+  const handleUpdateLoan = (updatedLoan: Loan) => {
+    setLoans(prev => prev.map(l => l.id === updatedLoan.id ? updatedLoan : l));
+  };
+
+  const handleDeleteLoan = (id: string) => {
+    setLoans(prev => prev.filter(l => l.id !== id));
+  };
+
   const handleRefreshPrices = async () => {
     setIsRefreshing(true);
     setShowUpdateLog(false);
@@ -464,6 +546,47 @@ const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportCsv = () => {
+    const headers = ['Symbol', 'Name', 'Category', 'Quantity', 'Avg Cost', 'Current Price', 'Value (MYR)', 'Value (USD)', 'Profit (MYR)'];
+
+    // Helper to escape CSV fields
+    const escapeCsv = (field: any) => {
+      if (field === null || field === undefined) return '';
+      const stringField = String(field);
+      // If contains comma, quote, or newline, wrap in quotes and escape quotes
+      if (stringField.search(/("|,|\n)/g) >= 0) {
+        return `"${stringField.replace(/"/g, '""')}"`;
+      }
+      return stringField;
+    };
+
+    const rows = computedAssets.map(a => [
+      a.symbol,
+      a.name,
+      a.category,
+      a.quantity,
+      a.averageCost,
+      a.currentPrice,
+      a.currentValueMyr.toFixed(2),
+      a.currentValueUsd.toFixed(2),
+      a.profitLossMyr.toFixed(2)
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(escapeCsv).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `wealthflow_assets_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -537,7 +660,9 @@ const App: React.FC = () => {
       >
         <h1 className="text-lg font-bold gradient-text">WealthFlow</h1>
         <div className="flex items-center gap-2">
-
+          <button onClick={toggleTheme} className="p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
+            {isDark ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
           <button onClick={togglePrivacy} className="p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
             {isPrivacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
@@ -547,15 +672,11 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Sidebar Navigation - 玻璃拟态 */}
+      {/* Sidebar - Desktop */}
       <aside
-        className={`
-          fixed inset-y-0 left-0 z-40 w-72 flex flex-col transform transition-all duration-300 ease-in-out
-          md:relative md:translate-x-0
-          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+        className={`fixed md:relative inset-y-0 left-0 w-72 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 flex flex-col h-full shadow-2xl md:shadow-none`}
         style={{
-          background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(3, 7, 18, 0.99) 100%)',
+          background: 'var(--sidebar-bg)',
           backdropFilter: 'blur(20px) saturate(180%)',
           borderRight: '1px solid rgba(255, 255, 255, 0.08)',
         }}
@@ -599,221 +720,213 @@ const App: React.FC = () => {
             <History size={22} />
             <span>History Log</span>
           </button>
+
+          <button
+            onClick={() => handleNavClick('dividends')}
+            className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'dividends' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <DollarSign size={22} />
+            <span>Dividends</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('loans')}
+            className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'loans' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <TrendingDown size={22} />
+            <span>Loans</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('settings')}
+            className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'settings' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <Settings size={22} />
+            <span>Settings</span>
+          </button>
         </nav>
 
-        {/* Global Settings & Data Panel */}
+        {/* Global Data Panel (Simplified) */}
         <div className="p-6 bg-slate-800/50 border-t border-slate-700 overflow-y-auto max-h-[50vh]">
-          {/* ... (existing settings content) ... */}
           <div className="flex items-center gap-2 text-slate-400 mb-4 text-sm uppercase font-semibold tracking-wider">
-            <Settings size={16} /> Global Settings
+            <Database size={16} /> Data Management
           </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-slate-500 text-xs mb-1.5 uppercase font-bold">USD/MYR Rate</label>
-              <input
-                type="number"
-                value={settings.exchangeRateUsdMyr}
-                onChange={(e) => setSettings({ ...settings, exchangeRateUsdMyr: parseFloat(e.target.value) || 0 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-500 text-xs mb-1.5 uppercase font-bold">Target Net Worth</label>
-              <input
-                type="number"
-                value={settings.financialFreedomTarget}
-                onChange={(e) => setSettings({ ...settings, financialFreedomTarget: parseFloat(e.target.value) || 0 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-slate-500 text-xs mb-1.5 uppercase font-bold">Saving Target</label>
-              <input
-                type="number"
-                value={settings.savingTarget}
-                onChange={(e) => setSettings({ ...settings, savingTarget: parseFloat(e.target.value) || 0 })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm"
-              />
+
+          {/* Firebase 云同步 - 推荐 */}
+          <div className="mt-6 pt-6 border-t border-slate-700">
+            <FirebaseSyncPanel
+              currentData={firebaseUserData}
+              onDataLoaded={handleFirebaseDataLoaded}
+            />
+          </div>
+
+          {/* Local Data Management Section */}
+          <div className="mt-4 pt-4 border-t border-slate-700">
+            <div className="flex items-center gap-2 text-slate-400 mb-3 text-sm uppercase font-semibold tracking-wider">
+              <Database size={16} /> Local Backup
             </div>
 
-            {/* Gemini API Key */}
-            <div className="mt-4 pt-4 border-t border-slate-700">
-              <label className="block text-slate-500 text-xs mb-1.5 uppercase font-bold">
-                Gemini API Key
-              </label>
-              <input
-                type="password"
-                placeholder="AIzaSy..."
-                value={settings.geminiApiKey || ''}
-                onChange={(e) => setSettings({ ...settings, geminiApiKey: e.target.value })}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-sm"
-              />
-              <a
-                href="https://aistudio.google.com/app/apikey"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] text-blue-400 hover:underline mt-1 inline-block"
+            <div className="space-y-3">
+              <button
+                onClick={handleExportData}
+                className="w-full flex items-center justify-center gap-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
               >
-                点击获取免费 API Key →
-              </a>
+                <Download size={16} />
+                Download File
+              </button>
 
-              {/* Worker URL */}
-              <div className="mt-3 relative">
-                <label className="block text-slate-500 text-xs mb-1.5 uppercase font-bold flex items-center gap-1">
-                  Cloudflare Worker URL <span className="text-[10px] text-slate-600 font-normal normal-case">(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://..."
-                  value={workerUrl}
-                  onChange={(e) => setWorkerUrl(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-blue-500 focus:outline-none text-xs"
-                />
-                <p className="text-[10px] text-slate-500 mt-1">
-                  配置 Worker URL 以使用更稳定的价格代理。若留空则使用本地/免费API。
-                </p>
-              </div>
-            </div>
+              <button
+                onClick={handleExportCsv}
+                className="w-full flex items-center justify-center gap-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
+              >
+                <FileSpreadsheet size={16} />
+                Export to CSV
+              </button>
 
-            {/* Firebase 云同步 - 推荐 */}
-            <div className="mt-6 pt-6 border-t border-slate-700">
-              <FirebaseSyncPanel
-                currentData={firebaseUserData}
-                onDataLoaded={handleFirebaseDataLoaded}
+              <button
+                onClick={triggerImport}
+                className="w-full flex items-center justify-center gap-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Upload size={16} />
+                Restore File
+              </button>
+
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImportData}
+                className="hidden"
+                accept=".json"
               />
-            </div>
 
-            {/* Local Data Management Section */}
-            <div className="mt-4 pt-4 border-t border-slate-700">
-              <div className="flex items-center gap-2 text-slate-400 mb-3 text-sm uppercase font-semibold tracking-wider">
-                <Database size={16} /> Local Backup
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  onClick={handleExportData}
-                  className="w-full flex items-center justify-center gap-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
-                >
-                  <Download size={16} />
-                  Download File
-                </button>
-
-                <button
-                  onClick={triggerImport}
-                  className="w-full flex items-center justify-center gap-2 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg text-sm font-medium transition-colors"
-                >
-                  <Upload size={16} />
-                  Restore File
-                </button>
-
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleImportData}
-                  className="hidden"
-                  accept=".json"
-                />
-
-                <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 mt-2">
-                  <Save size={12} className="text-emerald-500" />
-                  <span>Auto-saved locally</span>
-                </div>
+              <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-500 mt-2">
+                <Save size={12} className="text-emerald-500" />
+                <span>Auto-saved locally</span>
               </div>
             </div>
-
-            {lastUpdated && (
-              <div className="pt-4 mt-2 border-t border-slate-700 text-[10px] text-slate-500 text-center">
-                Prices Updated: {lastUpdated.toLocaleTimeString()}
-              </div>
-            )}
           </div>
+
+          {lastUpdated && (
+            <div className="pt-4 mt-2 border-t border-slate-700 text-[10px] text-slate-500 text-center">
+              Prices Updated: {lastUpdated.toLocaleTimeString()}
+            </div>
+          )}
         </div>
       </aside>
 
       {/* Overlay for mobile menu */}
-      {isMobileMenuOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      {
+        isMobileMenuOpen && (
+          <div
+            className="fixed inset-0 bg-black/50 z-30 md:hidden backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+        )
+      }
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col h-[calc(100vh-64px)] md:h-screen overflow-hidden relative">
         {/* Header - Desktop */}
         <header
-          className="h-20 hidden md:flex items-center justify-between px-8 flex-shrink-0 backdrop-blur-xl"
+          className="h-20 hidden md:flex items-center justify-between px-8 gap-8 flex-shrink-0 backdrop-blur-xl z-20"
           style={{
             background: isDark ? 'rgba(15, 23, 42, 0.8)' : 'rgba(255, 255, 255, 0.9)',
-            borderBottom: '1px solid var(--border-light)'
+            borderBottom: '1px solid var(--border-light)',
+            boxShadow: isDark ? '0 4px 6px -1px rgba(0, 0, 0, 0.3)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
           }}
         >
-          <h2
-            className="text-2xl font-bold capitalize tracking-tight"
-            style={{ color: 'var(--text-primary)' }}
-          >
-            {activeTab === 'history' ? 'History Log' : activeTab === 'projection' ? 'FIRE Projection' : activeTab}
-          </h2>
-
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle */}
-
-
-            {/* Privacy Toggle */}
-            <button
-              onClick={togglePrivacy}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-lg transition-all"
-              style={{
-                background: 'var(--bg-tertiary)',
-                color: 'var(--text-secondary)',
-                border: '1px solid var(--border-light)'
-              }}
-              title={isPrivacyMode ? "显示数值" : "隐藏数值"}
+          <div className="flex items-center gap-4 overflow-hidden min-w-0">
+            <h2
+              className="text-2xl font-bold capitalize tracking-tight whitespace-nowrap overflow-hidden text-ellipsis"
+              style={{ color: 'var(--text-primary)' }}
             >
-              {isPrivacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
-            </button>
+              {activeTab === 'dashboard' && '投资仪表盘'}
+              {activeTab === 'portfolio' && '资产组合'}
+              {activeTab === 'projection' && 'FIRE 推演'}
+              {activeTab === 'history' && '历史记录'}
+              {activeTab === 'dividends' && '股息追踪'}
+              {activeTab === 'loans' && '贷款详情'}
+              {activeTab === 'settings' && '系统设置'}
+            </h2>
+          </div>
 
-            {/* Refresh Prices */}
-            <button
-              onClick={handleRefreshPrices}
-              disabled={isRefreshing}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
-                }`}
-              style={{
-                background: 'var(--bg-tertiary)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-default)'
-              }}
-            >
-              <Globe size={18} className={isRefreshing ? 'animate-spin' : ''} />
-              {isRefreshing ? '更新中...' : '刷新价格'}
-            </button>
+          <div className="flex items-center gap-4 flex-shrink-0">
+            {/* View Settings Group */}
+            <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="flex items-center justify-center w-9 h-9 rounded-lg transition-all hover:bg-white dark:hover:bg-slate-700 shadow-sm"
+                style={{ color: 'var(--text-secondary)' }}
+                title={isDark ? "切换到浅色模式" : "切换到深色模式"}
+              >
+                {isDark ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+              {/* Privacy Toggle */}
+              <button
+                onClick={togglePrivacy}
+                className="flex items-center justify-center w-9 h-9 rounded-lg transition-all hover:bg-white dark:hover:bg-slate-700 shadow-sm"
+                style={{ color: 'var(--text-secondary)' }}
+                title={isPrivacyMode ? "显示数值" : "隐藏数值"}
+              >
+                {isPrivacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
-            {/* Add Asset */}
-            <button
-              onClick={() => handleAddAsset('Stock')}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold transition-all hover:scale-105"
-              style={{
-                background: 'var(--bg-tertiary)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-default)'
-              }}
-            >
-              <Plus size={18} /> 添加资产
-            </button>
+            {/* Separator */}
+            {(activeTab === 'dashboard' || activeTab === 'portfolio') && (
+              <div className="h-8 w-[1px] bg-slate-200 dark:bg-slate-700 mx-1"></div>
+            )}
 
-            {/* AI Analysis */}
-            <button
-              onClick={handleAiAnalysis}
-              className="btn-primary flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)',
-                color: 'white',
-                boxShadow: '0 4px 14px 0 rgba(59, 130, 246, 0.4)'
-              }}
-            >
-              <Sparkles size={18} /> AI 分析
-            </button>
+            {/* Contextual Actions */}
+            {(activeTab === 'dashboard' || activeTab === 'portfolio') && (
+              <div className="flex items-center gap-3">
+                {/* Refresh Prices */}
+                <button
+                  onClick={handleRefreshPrices}
+                  disabled={isRefreshing}
+                  className={`flex items-center gap-2 px-3 lg:px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-md'}`}
+                  style={{
+                    background: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border-default)'
+                  }}
+                  title="刷新价格"
+                >
+                  <Globe size={18} className={isRefreshing ? 'animate-spin' : 'text-blue-500'} />
+                  <span className="hidden lg:inline">{isRefreshing ? '更新中...' : '刷新价格'}</span>
+                </button>
+
+                {/* Add Asset */}
+                <button
+                  onClick={() => handleAddAsset('Stock')}
+                  className="flex items-center gap-2 px-3 lg:px-4 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 hover:shadow-md"
+                  style={{
+                    background: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border-default)'
+                  }}
+                  title="添加资产"
+                >
+                  <Plus size={18} className="text-emerald-500" />
+                  <span className="hidden lg:inline">添加资产</span>
+                </button>
+
+                {/* AI Analysis */}
+                <button
+                  onClick={handleAiAnalysis}
+                  className="flex items-center gap-2 px-3 lg:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:scale-105 hover:shadow-lg hover:shadow-blue-500/30"
+                  style={{
+                    background: 'linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)',
+                    color: 'white',
+                  }}
+                  title="AI 分析"
+                >
+                  <Sparkles size={18} />
+                  <span className="hidden lg:inline">AI 分析</span>
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -858,16 +971,22 @@ const App: React.FC = () => {
         >
           <div className="container mx-auto max-w-full space-y-8">
             {activeTab === 'dashboard' && (
-              <Dashboard
-                metrics={metrics}
-                assets={computedAssets}
-                financialFreedomTarget={settings.financialFreedomTarget}
-                savingTarget={settings.savingTarget}
-                dataSources={dataSources}
-                isPrivacyMode={isPrivacyMode}
-              />
+              <div className="max-w-[1600px] mx-auto">
+                <Dashboard
+                  metrics={metrics}
+                  assets={computedAssets}
+                  financialFreedomTarget={settings.financialFreedomTarget}
+                  savingTarget={settings.savingTarget}
+                  monthlyInvestmentTarget={settings.monthlyInvestmentTarget}
+                  annualInvestmentTarget={settings.annualInvestmentTarget}
+                  exchangeRate={settings.exchangeRateUsdMyr}
+                  dataSources={dataSources}
+                  isPrivacyMode={isPrivacyMode}
+                  yearlyRecords={yearlyRecords}
+                  dividendYieldPercent={settings.dividendYieldPercent}
+                />
+              </div>
             )}
-
             {activeTab === 'portfolio' && (
               <>
                 {/* 1. Rebalance Plan Section */}
@@ -920,6 +1039,45 @@ const App: React.FC = () => {
                 onDeleteRecord={handleDeleteYearlyRecord}
                 currentMetrics={metrics}
                 isPrivacyMode={isPrivacyMode}
+              />
+            )}
+
+            {activeTab === 'dividends' && (
+              <DividendTracker
+                records={dividendRecords}
+                onAddRecord={handleAddDividend}
+                onDeleteRecord={handleDeleteDividend}
+                exchangeRate={settings.exchangeRateUsdMyr}
+                isPrivacyMode={isPrivacyMode}
+              />
+            )}
+
+            {activeTab === 'loans' && (
+              <LoanTracker
+                loans={loans}
+                onAddLoan={handleAddLoan}
+                onUpdateLoan={handleUpdateLoan}
+                onDeleteLoan={handleDeleteLoan}
+                isPrivacyMode={isPrivacyMode}
+              />
+            )}
+
+            {activeTab === 'settings' && (
+              <SettingsPage
+                settings={settings}
+                fireSettings={fireSettings}
+                onUpdateSettings={setSettings}
+                onUpdateFireSettings={setFireSettings}
+                workerUrl={workerUrl}
+                setWorkerUrl={setWorkerUrl}
+                firebaseUserData={firebaseUserData}
+                onFirebaseDataLoaded={handleFirebaseDataLoaded}
+                handleExportData={handleExportData}
+                handleExportCsv={handleExportCsv}
+                triggerImport={triggerImport}
+                fileInputRef={fileInputRef}
+                handleImportData={handleImportData}
+                lastUpdated={lastUpdated}
               />
             )}
           </div>
@@ -980,50 +1138,54 @@ const App: React.FC = () => {
       </main>
 
       {/* AI Modal */}
-      {isAiOpen && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-sm transition-opacity">
-          <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col animate-slide-in-right">
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
-              <h3 className="font-bold flex items-center gap-2 text-lg">
-                <Sparkles size={20} /> Gemini Portfolio Analyst
-              </h3>
-              <button onClick={() => setIsAiOpen(false)} className="hover:bg-white/20 p-2 rounded-lg transition-colors">
-                <X size={24} />
-              </button>
-            </div>
+      {
+        isAiOpen && (
+          <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30 backdrop-blur-sm transition-opacity">
+            <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col animate-slide-in-right">
+              <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
+                <h3 className="font-bold flex items-center gap-2 text-lg">
+                  <Sparkles size={20} /> Gemini Portfolio Analyst
+                </h3>
+                <button onClick={() => setIsAiOpen(false)} className="hover:bg-white/20 p-2 rounded-lg transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
 
-            <div className="flex-1 p-8 overflow-y-auto">
-              {aiLoading ? (
-                <div className="flex flex-col items-center justify-center h-64 space-y-6">
-                  <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
-                  <p className="text-slate-500 text-base animate-pulse">Analyzing market data...</p>
-                </div>
-              ) : (
-                <div className="prose prose-slate prose-lg max-w-none">
-                  {aiInsight ? (
-                    <div className="whitespace-pre-line text-slate-700 leading-relaxed">
-                      {aiInsight}
-                    </div>
-                  ) : (
-                    <p className="text-rose-500">Failed to load insights.</p>
-                  )}
-                </div>
-              )}
+              <div className="flex-1 p-8 overflow-y-auto">
+                {aiLoading ? (
+                  <div className="flex flex-col items-center justify-center h-64 space-y-6">
+                    <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                    <p className="text-slate-500 text-base animate-pulse">Analyzing market data...</p>
+                  </div>
+                ) : (
+                  <div className="prose prose-slate prose-lg max-w-none">
+                    {aiInsight ? (
+                      <div className="whitespace-pre-line text-slate-700 leading-relaxed">
+                        {aiInsight}
+                      </div>
+                    ) : (
+                      <p className="text-rose-500">Failed to load insights.</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Loading Toast for AI Refresh */}
-      {isRefreshing && (
-        <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 animate-slide-in-right">
-          <Loader2 className="animate-spin text-blue-400" size={20} />
-          <span className="text-sm font-medium">AI is researching live market data... (approx 5-10s)</span>
-        </div>
-      )}
+      {
+        isRefreshing && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-slate-900 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3 animate-slide-in-right">
+            <Loader2 className="animate-spin text-blue-400" size={20} />
+            <span className="text-sm font-medium">AI is researching live market data... (approx 5-10s)</span>
+          </div>
+        )
+      }
 
 
-    </div>
+    </div >
   );
 };
 

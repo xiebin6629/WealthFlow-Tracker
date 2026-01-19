@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { FireProjectionSettings } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { TrendingUp, Calendar, Target, DollarSign, AlertCircle, Briefcase, RefreshCw, Calculator, Flag, CheckCircle2, Clock } from 'lucide-react';
+import ScenarioSimulator from './ScenarioSimulator';
 
 interface FireProjectionProps {
   settings: FireProjectionSettings;
@@ -86,60 +87,38 @@ const FireProjection: React.FC<FireProjectionProps> = ({
 
   // --- Projection Engine ---
   const projectionData = useMemo(() => {
-    const data = [];
-    let liquidBalance = currentLiquidNetWorth;
-    let epfBalance = currentEpfNetWorth;
-
-    let age = settings.currentAge;
     const currentYear = new Date().getFullYear();
+    const currentAge = currentYear - settings.birthYear;
+    const yearsToProject = 60 - currentAge; // Project up to age 60
 
-    // Real Return Rates (Nominal - Inflation)
-    const realLiquidReturnRate = (settings.annualReturnPercent - settings.inflationPercent) / 100;
-    const realEpfReturnRate = (settings.epfAnnualReturnPercent - settings.inflationPercent) / 100;
+    let liquidBal = currentLiquidNetWorth;
+    let epfBal = currentEpfNetWorth;
 
-    const maxAge = 100;
-
-    // Initial Point
-    data.push({
-      age,
-      year: currentYear,
-      liquid: liquidBalance,
-      epf: epfBalance,
-      total: liquidBalance + epfBalance,
-      target: fireTarget
-    });
-
-    // Loop until both criteria (Liquid > Target OR Total > Target) are potentially met, or max age
-    // We run until we are well past the target to show the crossover clearly
-    while (age < maxAge && (liquidBalance < fireTarget * 1.5)) {
-      age++;
-      const year = currentYear + (age - settings.currentAge);
-
-      // 1. Grow Liquid
-      const liquidGrowth = liquidBalance * realLiquidReturnRate;
-      const liquidContribution = settings.monthlyContribution * 12;
-      liquidBalance = liquidBalance + liquidGrowth + liquidContribution;
-
-      // 2. Grow EPF
-      const epfGrowth = epfBalance * realEpfReturnRate;
-      const epfContribution = settings.epfMonthlyContribution * 12;
-      epfBalance = epfBalance + epfGrowth + epfContribution;
-
+    const data = [];
+    // Start from current year
+    for (let i = 0; i <= yearsToProject; i++) {
       data.push({
-        age,
-        year,
-        liquid: Math.round(liquidBalance),
-        epf: Math.round(epfBalance),
-        total: Math.round(liquidBalance + epfBalance),
-        target: fireTarget
+        year: currentYear + i,
+        age: Number(currentAge) + i, // Ensure numeric addition
+        liquid: Math.round(liquidBal),
+        epf: Math.round(epfBal),
+        total: Math.round(liquidBal + epfBal),
+        target: fireTarget // Include target for tooltip
       });
 
-      // Safety break
-      if (data.length > 70) break;
-    }
+      // Apply annual contributions
+      liquidBal += (settings.monthlyContribution * 12);
+      epfBal += (settings.epfMonthlyContribution * 12);
 
+      // Apply Compound Interest (adjusted for inflation)
+      const realLiquidReturnRate = (settings.annualReturnPercent - settings.inflationPercent) / 100;
+      const realEpfReturnRate = (settings.epfAnnualReturnPercent - settings.inflationPercent) / 100;
+
+      liquidBal = liquidBal * (1 + realLiquidReturnRate);
+      epfBal = epfBal * (1 + realEpfReturnRate);
+    }
     return data;
-  }, [currentLiquidNetWorth, currentEpfNetWorth, fireTarget, settings]);
+  }, [settings, currentLiquidNetWorth, currentEpfNetWorth, fireTarget]);
 
   // --- Findings ---
   const reachedFireTotalIndex = projectionData.findIndex(d => d.total >= fireTarget);
@@ -161,7 +140,7 @@ const FireProjection: React.FC<FireProjectionProps> = ({
     return milestonesToTrack.map(goal => {
       // Find the first year where total net worth crosses the goal
       const achievedData = projectionData.find(d => d.total >= goal);
-      const currentTotal = projectionData[0].total;
+      const currentTotal = projectionData.length > 0 ? projectionData[0].total : 0;
       const isAchieved = currentTotal >= goal;
 
       return {
@@ -192,50 +171,43 @@ const FireProjection: React.FC<FireProjectionProps> = ({
 
             <div className="space-y-6">
               {/* Reverse FIRE Calculator - 逆向计算器 */}
-              <div
-                className="p-4 rounded-xl border"
-                style={{
-                  background: 'var(--primary-50)',
-                  borderColor: 'var(--primary-100)'
-                }}
-              >
-                <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1 mb-3" style={{ color: 'var(--primary-700)' }}>
+              {/* Reverse FIRE Calculator - 逆向计算器 */}
+              <div className="p-4 rounded-xl border bg-blue-50/50 border-blue-100 dark:bg-slate-800 dark:border-slate-700">
+                <h4 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1 mb-3 text-blue-700 dark:text-blue-300">
                   <Calculator size={14} /> 逆向 FIRE 计算器
                 </h4>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--primary-700)' }}>目标月支出 (RM)</label>
+                    <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">目标月支出 (RM)</label>
                     <input
                       type="number"
                       value={settings.desiredMonthlySpending || ''}
                       placeholder="例如: 5000"
                       onChange={(e) => onUpdateSettings({ ...settings, desiredMonthlySpending: parseFloat(e.target.value) || 0 })}
-                      className="input"
-                      style={{ background: 'var(--bg-primary)' }}
+                      className="input bg-white dark:bg-slate-700 border-blue-200 dark:border-slate-600 focus:border-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--primary-700)' }}>安全提款率 (%)</label>
+                    <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">安全提款率 (%)</label>
                     <input
                       type="number"
                       step="0.1"
                       value={settings.withdrawalRate || ''}
                       placeholder="4.0"
                       onChange={(e) => onUpdateSettings({ ...settings, withdrawalRate: parseFloat(e.target.value) || 0 })}
-                      className="input"
-                      style={{ background: 'var(--bg-primary)' }}
+                      className="input bg-white dark:bg-slate-700 border-blue-200 dark:border-slate-600 focus:border-blue-500"
                     />
-                    <p className="text-[10px] mt-1 opacity-80" style={{ color: 'var(--primary-600)' }}>标准: 4.0% | 保守: 3.0-3.5%</p>
+                    <p className="text-[10px] mt-1 text-blue-600 dark:text-blue-400 opacity-90">标准: 4.0% | 保守: 3.0-3.5%</p>
                   </div>
                 </div>
-                <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--primary-200)' }}>
-                  <p className="text-xs mb-1" style={{ color: 'var(--primary-600)' }}>所需投资组合规模:</p>
-                  <p className="text-lg font-extrabold" style={{ color: 'var(--primary-700)' }}>
+                <div className="mt-4 pt-3 border-t border-blue-200 dark:border-slate-600">
+                  <p className="text-xs mb-1 text-slate-600 dark:text-slate-400">所需投资组合规模:</p>
+                  <p className="text-lg font-extrabold text-blue-800 dark:text-blue-300">
                     RM {calculatedReverseTarget.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </p>
                   <button
                     onClick={() => onUpdateGlobalSettings(calculatedReverseTarget)}
-                    className="mt-2 w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-colors btn-primary"
+                    className="mt-3 w-full flex items-center justify-center gap-1.5 text-xs font-bold py-2 rounded-lg transition-colors btn-primary shadow-sm hover:shadow"
                   >
                     <Target size={14} /> 应用到目标
                   </button>
@@ -243,22 +215,26 @@ const FireProjection: React.FC<FireProjectionProps> = ({
               </div>
 
               {/* Common - 通用设置 */}
-              <div className="space-y-3 pb-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h4 className="text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>基础设置</h4>
+              <div className="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">基础设置</h4>
                 <div>
-                  <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>当前年龄</label>
+                  <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">出生年份 (Birth Year)</label>
                   <div className="flex items-center">
                     <input
                       type="number"
-                      value={settings.currentAge}
-                      onChange={(e) => onUpdateSettings({ ...settings, currentAge: parseInt(e.target.value) || 0 })}
+                      min="1950"
+                      max={new Date().getFullYear()}
+                      value={settings.birthYear}
+                      onChange={(e) => onUpdateSettings({ ...settings, birthYear: parseInt(e.target.value) || 1990 })}
                       className="input"
                     />
-                    <span className="ml-2 text-sm" style={{ color: 'var(--text-muted)' }}>岁</span>
+                    <span className="ml-3 text-sm font-bold text-blue-600 dark:text-blue-400">
+                      {new Date().getFullYear() - settings.birthYear} 岁
+                    </span>
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>通货膨胀率 (%)</label>
+                  <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">通货膨胀率 (%)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -270,12 +246,12 @@ const FireProjection: React.FC<FireProjectionProps> = ({
               </div>
 
               {/* Personal Liquid Investment - 个人流动投资 */}
-              <div className="space-y-3 pb-4 border-b" style={{ borderColor: 'var(--border-light)' }}>
-                <h4 className="text-xs font-bold text-blue-500 uppercase tracking-wider flex items-center gap-1">
+              <div className="space-y-3 pb-4 border-b border-slate-200 dark:border-slate-700">
+                <h4 className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1">
                   <TrendingUp size={14} /> 流动投资 (Liquid)
                 </h4>
                 <div>
-                  <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>月投入金额 (RM)</label>
+                  <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">月投入金额 (RM)</label>
                   <input
                     type="number"
                     value={settings.monthlyContribution}
@@ -284,7 +260,7 @@ const FireProjection: React.FC<FireProjectionProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>预期年化回报率 (%)</label>
+                  <label className="block text-sm font-semibold mb-1 text-slate-700 dark:text-slate-300">预期年化回报率 (%)</label>
                   <input
                     type="number"
                     step="0.1"
@@ -517,6 +493,15 @@ const FireProjection: React.FC<FireProjectionProps> = ({
         </div>
 
       </div>
+
+      {/* Scenario Simulator - 多情景模拟器 */}
+      <ScenarioSimulator
+        baseSettings={settings}
+        currentLiquidNetWorth={currentLiquidNetWorth}
+        currentEpfNetWorth={currentEpfNetWorth}
+        fireTarget={fireTarget}
+        isPrivacyMode={isPrivacyMode}
+      />
     </div>
   );
 };
