@@ -144,3 +144,19 @@ export interface ComputedLoan extends Loan {
   isCompleted: boolean; // 是否还清
   monthsRemaining: number; // 剩余月数
 }
+
+// Investment Transaction Types
+export type TransactionType = 'BUY' | 'SELL';
+
+export interface InvestmentTransaction {
+  id: string;
+  date: string;           // ISO date string
+  type: TransactionType;  // BUY or SELL
+  symbol: string;         // Asset symbol (e.g., VOO, AAPL)
+  quantity: number;       // Units bought/sold
+  pricePerUnit: number;   // Price per unit
+  currency: Currency;     // USD or MYR
+  totalAmount: number;    // Total transaction amount
+  cashAccountId?: string; // ID of cash account to deduct/add from
+  note?: string;
+}

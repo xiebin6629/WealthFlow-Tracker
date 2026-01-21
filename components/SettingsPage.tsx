@@ -103,6 +103,20 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                     </h3>
                     <div className="space-y-4">
                         <div>
+                            <label className="label">Gemini API Key (推荐)</label>
+                            <input
+                                type="password"
+                                placeholder="AIzaSy..."
+                                value={localSettings.geminiApiKey || ''}
+                                onChange={(e) => handleGlobalChange('geminiApiKey', e.target.value)}
+                                className="input"
+                            />
+                            <p className="text-xs mt-1.5 opacity-60" style={{ color: 'var(--text-muted)' }}>
+                                设置 Key 后将使用 Gemini 直接搜索最新股价，无需代理转发，更稳定。
+                                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-500 hover:underline">获取 Key</a>
+                            </p>
+                        </div>
+                        <div>
                             <label className="label">USD / MYR 汇率</label>
                             <div className="relative">
                                 <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
@@ -156,32 +170,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                             </div>
                         </div>
                         <div>
-                            <label className="label">年度储蓄目标 (Saving Target)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
-                                <input
-                                    type="number"
-                                    step="1000"
-                                    value={localSettings.savingTarget}
-                                    onChange={(e) => handleGlobalChange('savingTarget', parseFloat(e.target.value))}
-                                    className="input !pl-20"
-                                />
-                            </div>
-                        </div>
-                        {/* Reverse FIRE Settings */}
-                        <div>
-                            <label className="label">理想月支出 (Desired Monthly Spending)</label>
-                            <div className="relative">
-                                <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
-                                <input
-                                    type="number"
-                                    value={localFireSettings.desiredMonthlySpending}
-                                    onChange={(e) => handleFireChange('desiredMonthlySpending', parseFloat(e.target.value))}
-                                    className="input !pl-20"
-                                />
-                            </div>
-                        </div>
-                        <div>
                             <label className="label">安全提款率 (SWR)</label>
                             <div className="relative">
                                 <input
@@ -194,37 +182,72 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                                 <span className="absolute right-3 top-2.5 font-bold text-slate-500">%</span>
                             </div>
                         </div>
+                        {/* Derived: 理想月支出 = FIRE Target * SWR / 12 */}
+                        <div>
+                            <label className="label">理想月支出 (Derived)</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={Math.round((localSettings.financialFreedomTarget * (localFireSettings.withdrawalRate || 4) / 100) / 12).toLocaleString()}
+                                    className="input !pl-20 bg-slate-100 dark:bg-slate-700 cursor-not-allowed"
+                                />
+                            </div>
+                            <p className="text-xs mt-1.5 opacity-60" style={{ color: 'var(--text-muted)' }}>
+                                = 财务自由目标 × SWR ÷ 12
+                            </p>
+                        </div>
+                        <div>
+                            <label className="label">年度储蓄目标 (Saving Target)</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
+                                <input
+                                    type="number"
+                                    step="1000"
+                                    value={localSettings.savingTarget}
+                                    onChange={(e) => handleGlobalChange('savingTarget', parseFloat(e.target.value))}
+                                    className="input !pl-20"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Investment Targets - 投资目标 */}
                     <div className="mt-6 pt-6 border-t border-slate-700/50">
                         <h4 className="text-sm font-bold uppercase tracking-wider mb-4" style={{ color: 'var(--text-muted)' }}>投资目标追踪</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Derived: 月度投资目标 = monthlyContribution */}
                             <div>
                                 <label className="label min-h-[48px] flex items-end pb-1">月度投资目标</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
                                     <input
-                                        type="number"
-                                        step="100"
-                                        value={localSettings.monthlyInvestmentTarget || 0}
-                                        onChange={(e) => handleGlobalChange('monthlyInvestmentTarget', parseFloat(e.target.value))}
-                                        className="input !pl-20"
+                                        type="text"
+                                        readOnly
+                                        value={Math.round(localFireSettings.monthlyContribution || 0).toLocaleString()}
+                                        className="input !pl-20 bg-slate-100 dark:bg-slate-700 cursor-not-allowed"
                                     />
                                 </div>
+                                <p className="text-xs mt-1.5 opacity-60" style={{ color: 'var(--text-muted)' }}>
+                                    = 每月额外投资 (Liquid Contribution)
+                                </p>
                             </div>
+                            {/* Derived: 年度投资目标 = monthlyContribution * 12 */}
                             <div>
                                 <label className="label min-h-[48px] flex items-end pb-1">年度投资目标</label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
                                     <input
-                                        type="number"
-                                        step="1000"
-                                        value={localSettings.annualInvestmentTarget || 0}
-                                        onChange={(e) => handleGlobalChange('annualInvestmentTarget', parseFloat(e.target.value))}
-                                        className="input !pl-20"
+                                        type="text"
+                                        readOnly
+                                        value={Math.round((localFireSettings.monthlyContribution || 0) * 12).toLocaleString()}
+                                        className="input !pl-20 bg-slate-100 dark:bg-slate-700 cursor-not-allowed"
                                     />
                                 </div>
+                                <p className="text-xs mt-1.5 opacity-60" style={{ color: 'var(--text-muted)' }}>
+                                    = 月度投资目标 × 12
+                                </p>
                             </div>
                         </div>
                     </div>

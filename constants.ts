@@ -1,5 +1,5 @@
 
-import { Asset, GlobalSettings, FireProjectionSettings, YearlyRecord, DividendRecord, Loan } from './types';
+import { Asset, GlobalSettings, FireProjectionSettings, YearlyRecord, DividendRecord, Loan, InvestmentTransaction } from './types';
 
 // ============================================
 // 全局设置 - 模拟马来西亚初级程序员的财务规划
@@ -311,3 +311,8 @@ export const INITIAL_LOANS: Loan[] = [
     note: "AEON 0% 分期"
   },
 ];
+
+// ============================================
+// 投资交易记录 - 初始为空
+// ============================================
+export const INITIAL_TRANSACTIONS: InvestmentTransaction[] = [];

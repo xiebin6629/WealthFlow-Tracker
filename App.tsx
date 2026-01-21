@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
-import { Asset, ComputedAsset, GlobalSettings, PortfolioMetrics, GroundingSource, AssetCategory, FireProjectionSettings, YearlyRecord, DividendRecord, Loan } from './types';
-import { INITIAL_ASSETS, INITIAL_SETTINGS, INITIAL_FIRE_SETTINGS, INITIAL_YEARLY_RECORDS, INITIAL_DIVIDEND_RECORDS, INITIAL_LOANS } from './constants';
+import { Asset, ComputedAsset, GlobalSettings, PortfolioMetrics, GroundingSource, AssetCategory, FireProjectionSettings, YearlyRecord, DividendRecord, Loan, InvestmentTransaction } from './types';
+import { INITIAL_ASSETS, INITIAL_SETTINGS, INITIAL_FIRE_SETTINGS, INITIAL_YEARLY_RECORDS, INITIAL_DIVIDEND_RECORDS, INITIAL_LOANS, INITIAL_TRANSACTIONS } from './constants';
 import Dashboard from './components/Dashboard';
 import AssetTable from './components/AssetTable';
 import RebalanceView from './components/RebalanceView';
@@ -10,8 +10,9 @@ import YearlyRecords from './components/YearlyRecords';
 import FirebaseSyncPanel from './components/FirebaseSyncPanel';
 import DividendTracker from './components/DividendTracker';
 import LoanTracker from './components/LoanTracker';
+import InvestmentTransactionTracker from './components/InvestmentTransactionTracker';
 import { UserData } from './services/firebaseService';
-import { LayoutDashboard, List, Settings, Sparkles, Plus, X, Globe, Menu, Eye, EyeOff, Download, Upload, Save, Database, TrendingUp, TrendingDown, Cloud, CloudUpload, CloudDownload, LogOut, Loader2, FileJson, Clock, Key, Copy, AlertCircle, HelpCircle, Wrench, History, ArrowRight, CheckCircle2, FileSpreadsheet, Sun, Moon, DollarSign } from 'lucide-react';
+import { LayoutDashboard, List, Settings, Sparkles, Plus, X, Globe, Menu, Eye, EyeOff, Download, Upload, Save, Database, TrendingUp, TrendingDown, Cloud, CloudUpload, CloudDownload, LogOut, Loader2, FileJson, Clock, Key, Copy, AlertCircle, HelpCircle, Wrench, History, ArrowRight, CheckCircle2, FileSpreadsheet, Sun, Moon, DollarSign, Receipt } from 'lucide-react';
 import SettingsPage from './components/SettingsPage';
 import { analyzePortfolio } from './services/geminiService';
 import { fetchPrices } from './services/priceService';
@@ -61,7 +62,7 @@ const App: React.FC = () => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'projection' | 'history' | 'dividends' | 'loans' | 'settings'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'portfolio' | 'projection' | 'history' | 'dividends' | 'transactions' | 'loans' | 'settings'>('dashboard');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // --- State with LocalStorage Initialization ---
@@ -126,6 +127,15 @@ const App: React.FC = () => {
       return saved ? JSON.parse(saved) : INITIAL_LOANS;
     } catch (e) {
       return INITIAL_LOANS;
+    }
+  });
+
+  const [investmentTransactions, setInvestmentTransactions] = useState<InvestmentTransaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('WF_TRANSACTIONS');
+      return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+    } catch (e) {
+      return INITIAL_TRANSACTIONS;
     }
   });
 
@@ -248,6 +258,7 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEYS.YEARLY_RECORDS, JSON.stringify(yearlyRecords));
     localStorage.setItem('WF_DIVIDEND_RECORDS', JSON.stringify(dividendRecords));
     localStorage.setItem('WF_LOANS', JSON.stringify(loans));
+    localStorage.setItem('WF_TRANSACTIONS', JSON.stringify(investmentTransactions));
     if (lastUpdated) {
       localStorage.setItem(STORAGE_KEYS.LAST_UPDATED, lastUpdated.toISOString());
     }
@@ -255,7 +266,7 @@ const App: React.FC = () => {
       localStorage.setItem(STORAGE_KEYS.LAST_CLOUD_SYNC, lastCloudSync.toISOString());
     }
     setLastAutoSave(new Date());
-  }, [assets, settings, fireSettings, dataSources, yearlyRecords, lastUpdated, lastCloudSync]);
+  }, [assets, settings, fireSettings, dataSources, yearlyRecords, dividendRecords, loans, investmentTransactions, lastUpdated, lastCloudSync]);
 
 
 
@@ -446,6 +457,46 @@ const App: React.FC = () => {
   const handleDeleteLoan = (id: string) => {
     setLoans(prev => prev.filter(l => l.id !== id));
   };
+
+  // Investment Transaction Handlers
+  const handleAddTransaction = (
+    transaction: InvestmentTransaction,
+    assetUpdates: { id: string; quantity: number; averageCost: number } | null,
+    cashUpdate: { id: string; quantity: number } | null,
+    newAsset?: Asset
+  ) => {
+    // Add transaction record
+    setInvestmentTransactions(prev => [...prev, transaction]);
+
+    // Update existing asset or add new one
+    if (assetUpdates) {
+      setAssets(prev => prev.map(a =>
+        a.id === assetUpdates.id
+          ? { ...a, quantity: assetUpdates.quantity, averageCost: assetUpdates.averageCost }
+          : a
+      ));
+    } else if (newAsset) {
+      setAssets(prev => [...prev, newAsset]);
+    }
+
+    // Update cash account
+    if (cashUpdate) {
+      setAssets(prev => prev.map(a =>
+        a.id === cashUpdate.id
+          ? { ...a, quantity: cashUpdate.quantity }
+          : a
+      ));
+    }
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    setInvestmentTransactions(prev => prev.filter(t => t.id !== id));
+  };
+
+  // Cash accounts for transactions (Cash Investment only)
+  const cashAccountsForTransactions = useMemo(() => {
+    return computedAssets.filter(a => a.category === 'Cash (Investment)');
+  }, [computedAssets]);
 
   const handleRefreshPrices = async () => {
     setIsRefreshing(true);
@@ -727,6 +778,14 @@ const App: React.FC = () => {
           >
             <DollarSign size={22} />
             <span>Dividends</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('transactions')}
+            className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'transactions' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <Receipt size={22} />
+            <span>Transactions</span>
           </button>
 
           <button
@@ -1047,6 +1106,18 @@ const App: React.FC = () => {
                 records={dividendRecords}
                 onAddRecord={handleAddDividend}
                 onDeleteRecord={handleDeleteDividend}
+                exchangeRate={settings.exchangeRateUsdMyr}
+                isPrivacyMode={isPrivacyMode}
+              />
+            )}
+
+            {activeTab === 'transactions' && (
+              <InvestmentTransactionTracker
+                transactions={investmentTransactions}
+                assets={computedAssets}
+                cashAccounts={cashAccountsForTransactions}
+                onAddTransaction={handleAddTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
                 exchangeRate={settings.exchangeRateUsdMyr}
                 isPrivacyMode={isPrivacyMode}
               />

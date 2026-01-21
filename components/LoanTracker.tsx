@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Loan, ComputedLoan, LoanType } from '../types';
-import { CreditCard, Plus, Trash2, Home, Car, GraduationCap, Wallet, HelpCircle, TrendingDown, Calendar, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Plus, Trash2, Home, Car, GraduationCap, Wallet, HelpCircle, TrendingDown, Calendar, AlertTriangle, CheckCircle2, Edit2, X, Save } from 'lucide-react';
 
 interface LoanTrackerProps {
     loans: Loan[];
@@ -75,6 +75,7 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({
     isPrivacyMode
 }) => {
     const [showAddForm, setShowAddForm] = useState(false);
+    const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
     const [newLoan, setNewLoan] = useState<Partial<Loan>>({
         name: '',
         type: 'personal',
@@ -102,6 +103,32 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({
 
     const activeLoans = computedLoans.filter(l => !l.isCompleted);
     const completedLoans = computedLoans.filter(l => l.isCompleted);
+
+    // Edit handlers
+    const handleStartEdit = (loan: ComputedLoan) => {
+        setEditingLoan({
+            id: loan.id,
+            name: loan.name,
+            type: loan.type,
+            principalAmount: loan.principalAmount,
+            interestRatePercent: loan.interestRatePercent,
+            monthlyPayment: loan.monthlyPayment,
+            startDate: loan.startDate,
+            tenureMonths: loan.tenureMonths,
+            note: loan.note
+        });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingLoan(null);
+    };
+
+    const handleSaveEdit = () => {
+        if (editingLoan) {
+            onUpdateLoan(editingLoan);
+            setEditingLoan(null);
+        }
+    };
 
     const handleAddLoan = () => {
         if (!newLoan.name || !newLoan.principalAmount || !newLoan.monthlyPayment) return;
@@ -307,12 +334,22 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({
                                                 </div>
                                             </div>
                                         </div>
-                                        <button
-                                            onClick={() => onDeleteLoan(loan.id)}
-                                            className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
-                                        >
-                                            <Trash2 size={18} />
-                                        </button>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => handleStartEdit(loan)}
+                                                className="p-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-slate-400 hover:text-blue-500 transition-colors"
+                                                title="编辑"
+                                            >
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button
+                                                onClick={() => onDeleteLoan(loan.id)}
+                                                className="p-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500 transition-colors"
+                                                title="删除"
+                                            >
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-5">
@@ -416,6 +453,105 @@ const LoanTracker: React.FC<LoanTrackerProps> = ({
                     <CreditCard size={48} className="mx-auto mb-4 opacity-30" />
                     <p>暂无贷款记录</p>
                     <p className="text-sm mt-1">点击"添加贷款"开始追踪您的负债</p>
+                </div>
+            )}
+
+            {/* Edit Modal */}
+            {editingLoan && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                            <h3 className="text-lg font-bold" style={{ color: 'var(--text-primary)' }}>编辑贷款</h3>
+                            <button onClick={handleCancelEdit} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>贷款名称</label>
+                                <input
+                                    type="text"
+                                    value={editingLoan.name}
+                                    onChange={(e) => setEditingLoan({ ...editingLoan, name: e.target.value })}
+                                    className="input"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>贷款类型</label>
+                                <select
+                                    value={editingLoan.type}
+                                    onChange={(e) => setEditingLoan({ ...editingLoan, type: e.target.value as LoanType })}
+                                    className="input"
+                                >
+                                    {Object.entries(LOAN_TYPE_CONFIG).map(([key, config]) => (
+                                        <option key={key} value={key}>{config.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>贷款金额 (RM)</label>
+                                <input
+                                    type="number"
+                                    value={editingLoan.principalAmount}
+                                    onChange={(e) => setEditingLoan({ ...editingLoan, principalAmount: parseFloat(e.target.value) || 0 })}
+                                    className="input"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>年利率 (%)</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={editingLoan.interestRatePercent}
+                                    onChange={(e) => setEditingLoan({ ...editingLoan, interestRatePercent: parseFloat(e.target.value) || 0 })}
+                                    className="input"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>每月还款 (RM)</label>
+                                <input
+                                    type="number"
+                                    value={editingLoan.monthlyPayment}
+                                    onChange={(e) => setEditingLoan({ ...editingLoan, monthlyPayment: parseFloat(e.target.value) || 0 })}
+                                    className="input"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>贷款期限 (月)</label>
+                                <input
+                                    type="number"
+                                    value={editingLoan.tenureMonths}
+                                    onChange={(e) => setEditingLoan({ ...editingLoan, tenureMonths: parseInt(e.target.value) || 0 })}
+                                    className="input"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>开始日期</label>
+                                <input
+                                    type="date"
+                                    value={editingLoan.startDate}
+                                    onChange={(e) => setEditingLoan({ ...editingLoan, startDate: e.target.value })}
+                                    className="input"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm mb-1" style={{ color: 'var(--text-muted)' }}>备注 (可选)</label>
+                                <input
+                                    type="text"
+                                    value={editingLoan.note || ''}
+                                    onChange={(e) => setEditingLoan({ ...editingLoan, note: e.target.value })}
+                                    className="input"
+                                />
+                            </div>
+                        </div>
+                        <div className="p-6 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3">
+                            <button onClick={handleCancelEdit} className="btn btn-secondary">取消</button>
+                            <button onClick={handleSaveEdit} className="btn btn-success flex items-center gap-2">
+                                <Save size={18} />
+                                保存更改
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

@@ -108,6 +108,92 @@ export const fetchPricesViaWorker = async (assets: Asset[], apiKey?: string): Pr
 };
 
 /**
+ * 直接使用 Gemini API Key 获取价格 (Google Search Grounding)
+ * 这是最稳定的个人使用方案
+ */
+export const fetchPricesViaGeminiDirect = async (assets: Asset[], apiKey: string): Promise<PriceResult> => {
+    // 1. 准备资产列表
+    const assetsToFetch = assets.filter(a =>
+        ['ETF', 'Stock', 'Crypto', 'Money Market Fund'].includes(a.category)
+    );
+
+    if (assetsToFetch.length === 0) {
+        return { prices: {}, exchangeRate: null, sources: [] };
+    }
+
+    const symbolList = assetsToFetch.map(a => `${a.symbol} (${a.name})`).join(', ');
+
+    // 2. 构建 Prompt
+    const prompt = `
+    Find the latest market price for the following assets: ${symbolList}.
+    Also find the current USD to MYR exchange rate.
+    
+    Return a JSON object with this EXACT structure:
+    {
+      "prices": {
+        "SYMBOL": price_number,
+        ...
+      },
+      "exchangeRate": rate_number
+    }
+    For Malaysian stocks (KLSE), ensure the price is in MYR.
+    For US stocks/ETFs, price in USD.
+    For Crypto, price in USD.
+    `;
+
+    // 3. 调用 Gemini API
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                tools: [{ googleSearch: {} }], // Enable Grounding
+                generationConfig: { responseMimeType: "application/json" }
+            })
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error(`Gemini API Error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+
+    // 4. 解析结果
+    try {
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('No content generated');
+
+        const result = JSON.parse(text);
+
+        // 提取 Grounding Sources (如果需要)
+        const sources: GroundingSource[] = [];
+        if (data.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+            data.candidates[0].groundingMetadata.groundingChunks.forEach((chunk: any) => {
+                if (chunk.web?.uri && chunk.web?.title) {
+                    sources.push({ title: chunk.web.title, uri: chunk.web.uri });
+                }
+            });
+        }
+
+        const finalResult: PriceResult = {
+            prices: result.prices || {},
+            exchangeRate: result.exchangeRate || null,
+            sources: sources.slice(0, 5) // Limit sources
+        };
+
+        setCache(finalResult);
+        return finalResult;
+
+    } catch (e) {
+        console.error('Failed to parse Gemini response:', e);
+        throw new Error('Failed to parse Gemini price data');
+    }
+};
+
+/**
  * 通过免费 API 获取主要股票价格（备用方案）
  * 使用 Yahoo Finance 的公开端点
  */
@@ -141,53 +227,100 @@ export const fetchPricesViaFreeAPI = async (assets: Asset[]): Promise<PriceResul
     );
 
     // 批量获取股票价格 (通过 CORS 代理)
-    for (const asset of assetsToFetch) {
-        try {
-            let symbol = asset.symbol;
+    // 添加延迟函数避免速率限制
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-            // 常用马股代码映射 (Name -> Code)
-            const MY_STOCK_MAP: Record<string, string> = {
-                'MAYBANK': '1155',
-                'PBBANK': '1295',
-                'CIMB': '1023',
-                'TENAGA': '5347',
-                'IHH': '5225',
-                'PCHEM': '5183',
-                'DIGI': '6947',
-                'AXIATA': '6888',
-                'GENTING': '3182',
-                'IOICORP': '1961'
-            };
+    // 定义可用代理列表
+    const PROXY_GENERATORS = [
+        (url: string) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        (url: string) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+    ];
 
-            // Yahoo Finance 符号转换
-            if (asset.currency === 'MYR' && asset.category === 'Stock') {
-                let s = asset.symbol.toUpperCase().replace('.KL', ''); // 移除后缀进行查找
-                if (MY_STOCK_MAP[s]) {
-                    symbol = MY_STOCK_MAP[s]; // 替换为数字代码
-                }
+    for (let i = 0; i < assetsToFetch.length; i++) {
+        const asset = assetsToFetch[i];
 
-                // 如果用户没有输入 .KL 后缀，自动添加
-                if (!symbol.toUpperCase().endsWith('.KL')) {
-                    symbol = `${symbol}.KL`;
-                }
+        // 第一个请求不需要延迟，后续请求延迟 3秒 + 随机抖动 (避免固定模式被封)
+        if (i > 0) {
+            const jitter = Math.floor(Math.random() * 1000); // 0-1000ms 随机
+            await delay(3000 + jitter);
+        }
+
+        let symbol = asset.symbol;
+
+        // 常用马股代码映射 (Name -> Code)
+        const MY_STOCK_MAP: Record<string, string> = {
+            'MAYBANK': '1155',
+            'PBBANK': '1295',
+            'CIMB': '1023',
+            'TENAGA': '5347',
+            'IHH': '5225',
+            'PCHEM': '5183',
+            'DIGI': '6947',
+            'AXIATA': '6888',
+            'GENTING': '3182',
+            'IOICORP': '1961'
+        };
+
+        // Yahoo Finance 符号转换
+        if (asset.currency === 'MYR' && asset.category === 'Stock') {
+            let s = asset.symbol.toUpperCase().replace('.KL', '');
+            if (MY_STOCK_MAP[s]) {
+                symbol = MY_STOCK_MAP[s];
             }
-
-            // 使用 corsproxy.io 作为主要是 CORS 代理 (更稳定)
-            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-
-            const response = await fetch(proxyUrl);
-
-            if (response.ok) {
-                const data = await response.json();
-                const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-
-                if (price && typeof price === 'number') {
-                    prices[asset.symbol] = price;
-                }
+            if (!symbol.toUpperCase().endsWith('.KL')) {
+                symbol = `${symbol}.KL`;
             }
-        } catch (error) {
-            console.warn(`Failed to fetch price for ${asset.symbol}:`, error);
+        }
+
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1d`;
+
+        // 尝试获取价格 (支持多代理和重试)
+        let success = false;
+
+        // 尝试所有代理
+        for (const getProxyUrl of PROXY_GENERATORS) {
+            if (success) break;
+
+            try {
+                const proxyUrl = getProxyUrl(yahooUrl);
+                const response = await fetch(proxyUrl);
+
+                // 如果遇到限流 (429)，等待 5 秒后重试当前代理
+                if (response.status === 429) {
+                    console.warn(`Rate limit (429) via proxy for ${symbol}, waiting 5s...`);
+                    await delay(5000);
+                    // 简单的重试逻辑：再试一次 fetch
+                    const responseRetry = await fetch(proxyUrl);
+                    if (responseRetry.ok) {
+                        const data = await responseRetry.json();
+                        const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+                        if (typeof price === 'number') {
+                            prices[asset.symbol] = price;
+                            success = true;
+                            break;
+                        }
+                    }
+                    continue; // 如果重试失败，尝试列表中的下一个代理
+                }
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+
+                    if (typeof price === 'number') {
+                        prices[asset.symbol] = price;
+                        success = true;
+                    }
+                } else {
+                    console.warn(`Proxy returned status ${response.status} for ${symbol}`);
+                }
+            } catch (error) {
+                console.warn(`Failed to fetch price for ${symbol} using proxy, trying next...`, error);
+            }
+        }
+
+        if (!success) {
+            console.error(`All proxies failed for ${symbol}`);
         }
     }
 
@@ -265,6 +398,16 @@ export const fetchPrices = async (
         const cached = getCache();
         if (cached) {
             return { ...cached.data, fromCache: true };
+        }
+    }
+
+    // 0. 优先使用 Gemini Direct (如果配置了 API Key) - 这是最稳定/最快的个人方案
+    if (apiKey && apiKey.startsWith('AIza')) {
+        try {
+            console.log('Fetching prices using Gemini Direct...');
+            return await fetchPricesViaGeminiDirect(assets, apiKey);
+        } catch (error) {
+            console.warn('Gemini Direct fetch failed, falling back to other methods:', error);
         }
     }
 
