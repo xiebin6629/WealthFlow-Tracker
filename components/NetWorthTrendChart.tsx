@@ -83,7 +83,11 @@ const NetWorthTrendChart: React.FC<NetWorthTrendChartProps> = ({ records, isPriv
                             hide={true}
                             domain={['auto', 'auto']}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(255,255,255,0.2)' }} />
+                        <Tooltip
+                            content={<CustomTooltip />}
+                            cursor={{ stroke: 'rgba(255,255,255,0.2)' }}
+                            offset={40}
+                        />
                         <Area
                             type="monotone"
                             dataKey="total"
