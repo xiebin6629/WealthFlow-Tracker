@@ -121,36 +121,33 @@ export const fetchPricesViaGeminiDirect = async (assets: Asset[], apiKey: string
         return { prices: {}, exchangeRate: null, sources: [] };
     }
 
-    const symbolList = assetsToFetch.map(a => `${a.symbol} (${a.name})`).join(', ');
+    const symbolList = assetsToFetch.map(a => {
+        let identifier = a.symbol;
+        if (a.currency === 'MYR') identifier += ' (KLSE)';
+        // Append name for clarity if it's not too long, helps with specific tickers
+        if (a.name && a.name.length < 20) identifier += ` ${a.name}`;
+        return identifier;
+    }).join(', ');
 
     // 2. 构建 Prompt
     const prompt = `
-    Find the latest market price for the following assets: ${symbolList}.
-    Also find the current USD to MYR exchange rate.
-    
-    Return a JSON object with this EXACT structure:
-    {
-      "prices": {
-        "SYMBOL": price_number,
-        ...
-      },
-      "exchangeRate": rate_number
-    }
-    For Malaysian stocks (KLSE), ensure the price is in MYR.
-    For US stocks/ETFs, price in USD.
-    For Crypto, price in USD.
+    Find latest prices: ${symbolList}. 
+    Get live USD/MYR rate. 
+    Output ONLY raw JSON. No markdown. 
+    Structure: {"prices":{"SYMBOL":0.0},"exchangeRate":0.0}. 
+    MYR for KLSE, USD for others.
     `;
 
     // 3. 调用 Gemini API
     const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 tools: [{ googleSearch: {} }], // Enable Grounding
-                generationConfig: { responseMimeType: "application/json" }
+                // generationConfig: { responseMimeType: "application/json" } // Removed to avoid conflict with tools
             })
         }
     );
@@ -163,8 +160,11 @@ export const fetchPricesViaGeminiDirect = async (assets: Asset[], apiKey: string
 
     // 4. 解析结果
     try {
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!text) throw new Error('No content generated');
+
+        // Clean up markdown code blocks if present
+        text = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
         const result = JSON.parse(text);
 
