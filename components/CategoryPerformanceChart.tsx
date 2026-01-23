@@ -51,7 +51,7 @@ const CategoryPerformanceChart: React.FC<CategoryPerformanceChartProps> = ({
                 };
             })
             .filter(d => d.value > 0)
-            .sort((a, b) => b.profitLossPercent - a.profitLossPercent);
+            .sort((a, b) => b.profitLoss - a.profitLoss);
     }, [assets]);
 
     const CustomTooltip = ({ active, payload, label }: any) => {
@@ -76,6 +76,9 @@ const CategoryPerformanceChart: React.FC<CategoryPerformanceChartProps> = ({
                         <p style={{ color: item.profitLoss >= 0 ? 'var(--success-500)' : 'var(--danger-500)' }}>
                             盈亏: {isPrivacyMode ? '****' : `${item.profitLoss >= 0 ? '+' : ''}RM ${item.profitLoss.toLocaleString()}`}
                         </p>
+                        <p style={{ color: item.profitLossPercent >= 0 ? 'var(--success-500)' : 'var(--danger-500)', fontSize: '0.75rem' }}>
+                            收益率: {item.profitLossPercent > 0 ? '+' : ''}{item.profitLossPercent}%
+                        </p>
                     </div>
                     <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>
                         {item.count} 个资产
@@ -98,7 +101,7 @@ const CategoryPerformanceChart: React.FC<CategoryPerformanceChartProps> = ({
         >
             <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <BarChart3 size={20} className="text-emerald-500" />
-                资产类别表现对比
+                资产类别表现对比 (盈亏额)
             </h3>
 
             <div className="h-[280px]">
@@ -107,10 +110,9 @@ const CategoryPerformanceChart: React.FC<CategoryPerformanceChartProps> = ({
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-light)" horizontal={false} />
                         <XAxis
                             type="number"
-                            tick={{ fill: 'var(--text-muted)', fontSize: 12 }}
+                            tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
                             axisLine={{ stroke: 'var(--border-light)' }}
-                            tickFormatter={(value) => `${value}%`}
-                            domain={['dataMin - 5', 'dataMax + 5']}
+                            tickFormatter={(value) => `RM ${(value / 1000).toFixed(0)}k`}
                         />
                         <YAxis
                             type="category"
@@ -120,11 +122,11 @@ const CategoryPerformanceChart: React.FC<CategoryPerformanceChartProps> = ({
                             width={75}
                         />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar dataKey="profitLossPercent" radius={[0, 4, 4, 0]} animationDuration={800}>
+                        <Bar dataKey="profitLoss" radius={[0, 4, 4, 0]} animationDuration={800}>
                             {data.map((entry, index) => (
                                 <Cell
                                     key={`cell-${index}`}
-                                    fill={entry.profitLossPercent >= 0 ? 'var(--success-500)' : 'var(--danger-500)'}
+                                    fill={entry.profitLoss >= 0 ? 'var(--success-500)' : 'var(--danger-500)'}
                                 />
                             ))}
                         </Bar>
@@ -140,19 +142,19 @@ const CategoryPerformanceChart: React.FC<CategoryPerformanceChartProps> = ({
                         {data[0]?.category}
                     </p>
                     <p className="text-sm font-mono" style={{ color: 'var(--success-600)' }}>
-                        +{data[0]?.profitLossPercent}%
+                        {isPrivacyMode ? '****' : `+RM ${data[0]?.profitLoss.toLocaleString()}`}
                     </p>
                 </div>
-                {data.length > 1 && data[data.length - 1].profitLossPercent < data[0].profitLossPercent && (
-                    <div className="p-3 rounded-lg" style={{ background: data[data.length - 1].profitLossPercent < 0 ? 'var(--danger-50)' : 'var(--bg-tertiary)' }}>
-                        <p className="text-xs font-bold uppercase" style={{ color: data[data.length - 1].profitLossPercent < 0 ? 'var(--danger-600)' : 'var(--text-muted)' }}>
-                            {data[data.length - 1].profitLossPercent < 0 ? '最差表现' : '最低收益'}
+                {data.length > 1 && data[data.length - 1].profitLoss < data[0].profitLoss && (
+                    <div className="p-3 rounded-lg" style={{ background: data[data.length - 1].profitLoss < 0 ? 'var(--danger-50)' : 'var(--bg-tertiary)' }}>
+                        <p className="text-xs font-bold uppercase" style={{ color: data[data.length - 1].profitLoss < 0 ? 'var(--danger-600)' : 'var(--text-muted)' }}>
+                            {data[data.length - 1].profitLoss < 0 ? '最差表现' : '最低收益'}
                         </p>
-                        <p className="text-lg font-bold" style={{ color: data[data.length - 1].profitLossPercent < 0 ? 'var(--danger-700)' : 'var(--text-secondary)' }}>
+                        <p className="text-lg font-bold" style={{ color: data[data.length - 1].profitLoss < 0 ? 'var(--danger-700)' : 'var(--text-secondary)' }}>
                             {data[data.length - 1]?.category}
                         </p>
-                        <p className="text-sm font-mono" style={{ color: data[data.length - 1].profitLossPercent < 0 ? 'var(--danger-600)' : 'var(--text-muted)' }}>
-                            {data[data.length - 1]?.profitLossPercent > 0 ? '+' : ''}{data[data.length - 1]?.profitLossPercent}%
+                        <p className="text-sm font-mono" style={{ color: data[data.length - 1].profitLoss < 0 ? 'var(--danger-600)' : 'var(--text-muted)' }}>
+                            {isPrivacyMode ? '****' : `${data[data.length - 1]?.profitLoss > 0 ? '+' : ''}RM ${data[data.length - 1]?.profitLoss.toLocaleString()}`}
                         </p>
                     </div>
                 )}

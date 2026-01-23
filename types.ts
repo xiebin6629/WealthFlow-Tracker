@@ -79,6 +79,9 @@ export interface RebalanceAction {
   targetWeight: number;
   isUsd: boolean;
   usdAmount?: number;
+  groupName?: string;
+  groupCurrentWeight?: number;
+  groupTargetWeight?: number;
 }
 
 export interface GroundingSource {

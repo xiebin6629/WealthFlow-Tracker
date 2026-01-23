@@ -54,25 +54,27 @@ const RebalanceView: React.FC<RebalanceViewProps> = ({ assets, exchangeRate, isP
           const weight = member.targetAllocation / groupTargetPercent;
           memberDiff = groupDiff * weight;
         } else {
-          // 如果目标是 0%，则建议清仓 (或者如果这就是用户想要的 Hold，则逻辑正确导出 Sell)
-          // 但通常 RebalanceView 只显示 Buy/Sell。如果 diff 是负数，就是 Sell。
+          // If target is 0%, then liquidate or hold. If diff is negative, it's a sell.
           memberDiff = -member.currentValueMyr;
         }
 
-        // 4. 生成操作
+        // 4. Generate Action
         let action: 'BUY' | 'SELL' | 'HOLD' = 'HOLD';
-        // 阈值 (RM 50)
+        // Threshold (RM 50)
         if (memberDiff > 50) action = 'BUY';
         else if (memberDiff < -50) action = 'SELL';
 
         if (action !== 'HOLD') {
-          // 计算 USD
+          // Calc USD
           const isUsd = member.currency === 'USD';
           const usdAmount = isUsd ? Math.abs(memberDiff / exchangeRate) : undefined;
           const price = member.currentPrice || 1;
           const amountUnits = isUsd
             ? (usdAmount! / price)
             : (Math.abs(memberDiff) / price);
+
+          const totalPortfolioValue = currentTotalValue;
+          const groupCurrentPercentCalc = (groupCurrentValue / totalPortfolioValue) * 100;
 
           generatedActions.push({
             symbol: member.symbol,
@@ -82,19 +84,22 @@ const RebalanceView: React.FC<RebalanceViewProps> = ({ assets, exchangeRate, isP
             currentWeight: member.currentAllocationPercent,
             targetWeight: member.targetAllocation,
             isUsd,
-            usdAmount
+            usdAmount,
+            groupName: asset.groupName, // Use the loop variable's groupName which is same for all members
+            groupCurrentWeight: groupCurrentPercentCalc,
+            groupTargetWeight: groupTargetPercent
           });
         }
       });
     }
 
     return generatedActions.sort((a, b) => {
-      // 主要排序: 操作优先级 (买入 > 卖出)
+      // Primary: Action Priority (BUY > SELL)
       const score = (x: string) => (x === 'BUY' ? 2 : x === 'SELL' ? 1 : 0);
       const priorityDiff = score(b.action) - score(a.action);
       if (priorityDiff !== 0) return priorityDiff;
 
-      // 次要排序: 金额 (降序)
+      // Secondary: Amount (Desc)
       return b.amountMyr - a.amountMyr;
     });
   }, [assets, exchangeRate]);
@@ -135,11 +140,29 @@ const RebalanceView: React.FC<RebalanceViewProps> = ({ assets, exchangeRate, isP
                 style={{ background: item.action === 'BUY' ? 'var(--success-500)' : 'var(--danger-500)' }}
               ></div>
               <div>
-                <h4 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{item.symbol}</h4>
-                <div className="text-xs flex items-center gap-2" style={{ color: 'var(--text-muted)' }}>
-                  <span>{item.currentWeight.toFixed(1)}%</span>
-                  <ArrowRight size={12} style={{ color: 'var(--text-muted)' }} />
-                  <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{item.targetWeight}%</span>
+                <div className="flex items-baseline gap-2">
+                  <h4 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{item.symbol}</h4>
+                  {item.groupName && (
+                    <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
+                      {item.groupName}
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-xs flex flex-col gap-0.5 mt-1" style={{ color: 'var(--text-muted)' }}>
+                  {item.groupName ? (
+                    <div className="flex items-center gap-2">
+                      <span title="Group Weight">Grp: {item.groupCurrentWeight?.toFixed(1)}%</span>
+                      <ArrowRight size={10} style={{ color: 'var(--text-muted)' }} />
+                      <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{item.groupTargetWeight}%</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span>{item.currentWeight.toFixed(1)}%</span>
+                      <ArrowRight size={12} style={{ color: 'var(--text-muted)' }} />
+                      <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{item.targetWeight}%</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

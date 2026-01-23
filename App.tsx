@@ -526,6 +526,11 @@ const App: React.FC = () => {
 
       // Update Asset Prices
       const newAssets = assets.map(asset => {
+        // Skip price updates for Cash-like assets to ensure they remain at 1.0
+        if (['Cash (Investment)', 'Cash (Saving)', 'Money Market Fund', 'Pension'].includes(asset.category)) {
+          return asset;
+        }
+
         const newPrice = result.prices[asset.symbol];
         if (newPrice !== undefined && newPrice !== asset.currentPrice) {
           updates.push({
@@ -765,22 +770,6 @@ const App: React.FC = () => {
           </button>
 
           <button
-            onClick={() => handleNavClick('history')}
-            className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'history' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <History size={22} />
-            <span>History Log</span>
-          </button>
-
-          <button
-            onClick={() => handleNavClick('dividends')}
-            className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'dividends' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
-          >
-            <DollarSign size={22} />
-            <span>Dividends</span>
-          </button>
-
-          <button
             onClick={() => handleNavClick('transactions')}
             className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'transactions' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
@@ -789,11 +778,27 @@ const App: React.FC = () => {
           </button>
 
           <button
+            onClick={() => handleNavClick('history')}
+            className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'history' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <History size={22} />
+            <span>History Log</span>
+          </button>
+
+          <button
             onClick={() => handleNavClick('loans')}
             className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'loans' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
           >
             <TrendingDown size={22} />
             <span>Loans</span>
+          </button>
+
+          <button
+            onClick={() => handleNavClick('dividends')}
+            className={`w-full flex items-center gap-4 px-4 py-4 rounded-xl transition-all text-base font-medium ${activeTab === 'dividends' ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+          >
+            <DollarSign size={22} />
+            <span>Dividends</span>
           </button>
 
           <button

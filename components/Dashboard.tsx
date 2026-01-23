@@ -208,7 +208,7 @@ const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedom
   return (
     <div className="space-y-8">
       {/* Top Cards - 顶部统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
         {/* 总净资产 */}
         <div
@@ -377,37 +377,7 @@ const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedom
           )}
         </div>
 
-        {/* Passive Income - 被动收入估算 */}
-        <div
-          className="p-6 md:p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
-          style={cardStyle}
-        >
-          <div className="absolute top-4 right-4 opacity-10">
-            <DollarSign size={50} style={{ color: 'var(--success-500)' }} />
-          </div>
 
-          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
-            预估被动收入 (年)
-          </p>
-
-          <div className="mt-2">
-            <h3 className="text-2xl md:text-3xl font-extrabold gradient-text">
-              {isPrivacyMode ? 'RM ****' : `RM ${(metrics.investedNetWorth * (dividendYieldPercent / 100)).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-            </h3>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-              基于 {dividendYieldPercent}% 年化收益率
-            </p>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-700/50">
-            <div className="flex justify-between items-center text-xs">
-              <span style={{ color: 'var(--text-muted)' }}>月均收入</span>
-              <span className="font-bold font-mono" style={{ color: 'var(--success-500)' }}>
-                {isPrivacyMode ? 'RM ****' : `RM ${(metrics.investedNetWorth * (dividendYieldPercent / 100) / 12).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-              </span>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Charts Section - 图表区域 */}
