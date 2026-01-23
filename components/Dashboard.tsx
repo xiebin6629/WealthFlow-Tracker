@@ -353,7 +353,7 @@ const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedom
                   <span style={{ color: 'var(--text-muted)' }}>总进度 (含公积金)</span>
                   <span className="font-semibold" style={{ color: 'var(--primary-500)' }}>{fireProgressPercent.toFixed(1)}%</span>
                 </div>
-                <div className="progress-bar">
+                <div className="progress-bar" title={`总资产: RM ${metrics.totalNetWorth.toLocaleString(undefined, { maximumFractionDigits: 0 })} (公积金: RM ${metrics.pensionNetWorth.toLocaleString(undefined, { maximumFractionDigits: 0 })})`}>
                   <div className="progress-bar-fill" style={{ width: `${fireProgressPercent}%` }} />
                 </div>
               </div>
@@ -363,7 +363,7 @@ const Dashboard: React.FC<DashboardProps> = ({ metrics, assets, financialFreedom
                   <span style={{ color: 'var(--text-muted)' }}>流动资产进度</span>
                   <span className="font-semibold" style={{ color: 'var(--cyan-500)' }}>{fireLiquidProgressPercent.toFixed(1)}%</span>
                 </div>
-                <div className="progress-bar">
+                <div className="progress-bar" title={`流动资产: RM ${(metrics.investedNetWorth + metrics.savedNetWorth).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}>
                   <div
                     className="progress-bar-fill"
                     style={{
