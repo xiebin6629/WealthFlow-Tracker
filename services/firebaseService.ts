@@ -3,7 +3,7 @@
  * 使用 Firebase Firestore 实现多设备数据同步
  */
 
-import { Asset, GlobalSettings, FireProjectionSettings, YearlyRecord } from '../types';
+import { Asset, GlobalSettings, FireProjectionSettings, YearlyRecord, DividendRecord, Loan, InvestmentTransaction } from '../types';
 import { firebaseConfig } from '../firebase.config';
 
 // Firebase SDK 通过 CDN 加载，这些是全局类型声明
@@ -25,6 +25,9 @@ export interface UserData {
     settings: GlobalSettings;
     fireSettings: FireProjectionSettings;
     yearlyRecords: YearlyRecord[];
+    dividendRecords?: DividendRecord[];
+    loans?: Loan[];
+    investmentTransactions?: InvestmentTransaction[];
     lastUpdated: string;
 }
 

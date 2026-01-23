@@ -691,6 +691,9 @@ const App: React.FC = () => {
     if (data.settings) setSettings(data.settings);
     if (data.fireSettings) setFireSettings(data.fireSettings);
     if (data.yearlyRecords) setYearlyRecords(data.yearlyRecords);
+    if (data.dividendRecords) setDividendRecords(data.dividendRecords);
+    if (data.loans) setLoans(data.loans);
+    if (data.investmentTransactions) setInvestmentTransactions(data.investmentTransactions);
     if (data.lastUpdated) setLastUpdated(new Date(data.lastUpdated));
   }, []);
 
@@ -700,8 +703,11 @@ const App: React.FC = () => {
     settings,
     fireSettings,
     yearlyRecords,
+    dividendRecords,
+    loans,
+    investmentTransactions,
     lastUpdated: lastUpdated?.toISOString() || new Date().toISOString(),
-  }), [assets, settings, fireSettings, yearlyRecords, lastUpdated]);
+  }), [assets, settings, fireSettings, yearlyRecords, dividendRecords, loans, investmentTransactions, lastUpdated]);
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row font-sans" style={{ backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)' }}>
