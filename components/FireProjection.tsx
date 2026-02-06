@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { FireProjectionSettings } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { TrendingUp, Calendar, Target, DollarSign, AlertCircle, Briefcase, RefreshCw, Calculator, Flag, CheckCircle2, Clock } from 'lucide-react';
+import { TrendingUp, Calendar, Target, DollarSign, AlertCircle, Briefcase, RefreshCw, Calculator, Flag, CheckCircle2, Clock, Download } from 'lucide-react';
 import ScenarioSimulator from './ScenarioSimulator';
 
 interface FireProjectionProps {
@@ -150,6 +150,33 @@ const FireProjection: React.FC<FireProjectionProps> = ({
       };
     }).filter(m => m.data !== undefined || m.isAchieved); // Only show reachable milestones
   }, [projectionData]);
+
+  const handleExport = () => {
+    if (!projectionData || projectionData.length === 0) return;
+
+    const headers = ['Year', 'Age', 'Liquid Net Worth', 'EPF Net Worth', 'Total Net Worth'];
+    const rows = projectionData.map(item => [
+      item.year,
+      item.age,
+      item.liquid,
+      item.epf,
+      item.total
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `fire_projection_trajectory_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="space-y-6">
@@ -359,9 +386,18 @@ const FireProjection: React.FC<FireProjectionProps> = ({
               backdropFilter: 'blur(12px)'
             }}
           >
-            <h3 className="text-lg font-bold mb-6 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-              <TrendingUp size={20} className="text-emerald-500" /> 净值增长轨迹
-            </h3>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                <TrendingUp size={20} className="text-emerald-500" /> 净值增长轨迹
+              </h3>
+              <button
+                onClick={handleExport}
+                className="p-1.5 rounded-lg hover:bg-slate-700/50 transition-colors text-slate-400 hover:text-white"
+                title="Export Chart Data"
+              >
+                <Download size={16} />
+              </button>
+            </div>
 
             <div className="flex-1">
               <ResponsiveContainer width="100%" height="100%">

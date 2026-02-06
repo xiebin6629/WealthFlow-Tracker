@@ -720,7 +720,13 @@ const App: React.FC = () => {
           borderBottom: '1px solid var(--border-light)'
         }}
       >
-        <h1 className="text-lg font-bold gradient-text">WealthFlow</h1>
+        <div className="flex items-center gap-3">
+          <button onClick={toggleMobileMenu} className="p-2 -ml-2" style={{ color: 'var(--text-primary)' }}>
+            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
+          <h1 className="text-lg font-bold gradient-text">WealthFlow</h1>
+        </div>
+
         <div className="flex items-center gap-2">
           <button onClick={toggleTheme} className="p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
@@ -728,15 +734,12 @@ const App: React.FC = () => {
           <button onClick={togglePrivacy} className="p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
             {isPrivacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
-          <button onClick={toggleMobileMenu} className="p-2" style={{ color: 'var(--text-primary)' }}>
-            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
         </div>
       </div>
 
       {/* Sidebar - Desktop */}
       <aside
-        className={`fixed md:relative inset-y-0 left-0 w-72 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 flex flex-col h-full shadow-2xl md:shadow-none`}
+        className={`fixed md:relative inset-y-0 left-0 w-72 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40 flex flex-col h-full shadow-2xl md:shadow-none overflow-y-auto`}
         style={{
           background: 'var(--sidebar-bg)',
           backdropFilter: 'blur(20px) saturate(180%)',
