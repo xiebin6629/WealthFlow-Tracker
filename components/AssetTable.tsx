@@ -42,7 +42,7 @@ interface TopUpValues {
 }
 
 // Define Column Keys for Drag and Drop
-type ColumnKey = 'symbol' | 'category' | 'currentPrice' | 'quantity' | 'totalCostOriginal' | 'currentValueUsd' | 'currentValueMyr' | 'currentAllocationPercent' | 'targetAllocation' | 'groupName';
+type ColumnKey = 'symbol' | 'category' | 'currentPrice' | 'averageCost' | 'quantity' | 'totalCostOriginal' | 'currentValueUsd' | 'currentValueMyr' | 'profitLoss' | 'currentAllocationPercent' | 'targetAllocation' | 'groupName';
 
 interface ColumnDef {
   key: ColumnKey;
@@ -52,16 +52,17 @@ interface ColumnDef {
 }
 
 const DEFAULT_COLUMNS: ColumnDef[] = [
-  { key: 'symbol', label: '资产', align: 'left', width: 'min-w-[200px]' },
+  { key: 'symbol', label: '资产', align: 'left', width: 'min-w-[180px]' },
   { key: 'category', label: '类别', align: 'left' },
-  { key: 'currentPrice', label: '价格 / 月供', align: 'left' },
-  { key: 'quantity', label: '数量 / 开始', align: 'left' },
-  { key: 'totalCostOriginal', label: '成本 / 基数', align: 'left' },
-  { key: 'currentValueUsd', label: '市值 (USD)', align: 'right' },
+  { key: 'currentPrice', label: '现价', align: 'right' },
+  { key: 'averageCost', label: '成本价', align: 'right' },
+  { key: 'quantity', label: '数量', align: 'right' },
+  { key: 'totalCostOriginal', label: '总成本', align: 'right' },
   { key: 'currentValueMyr', label: '市值 (RM)', align: 'right' },
+  { key: 'profitLoss', label: '盈亏', align: 'right' },
   { key: 'currentAllocationPercent', label: '占比 %', align: 'center' },
   { key: 'targetAllocation', label: '目标 %', align: 'center' },
-  { key: 'groupName', label: 'Group', align: 'left', width: 'w-[100px]' },
+  { key: 'groupName', label: 'Group', align: 'left', width: 'w-[80px]' },
 ];
 
 const STORAGE_KEY_COL_ORDER = 'WF_COL_ORDER';
@@ -131,8 +132,9 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
     return assets.reduce((acc, asset) => ({
       costMyr: acc.costMyr + asset.totalCostMyr,
       valueUsd: acc.valueUsd + asset.currentValueUsd,
-      valueMyr: acc.valueMyr + asset.currentValueMyr
-    }), { costMyr: 0, valueUsd: 0, valueMyr: 0 });
+      valueMyr: acc.valueMyr + asset.currentValueMyr,
+      profitLoss: acc.profitLoss + asset.profitLossMyr
+    }), { costMyr: 0, valueUsd: 0, valueMyr: 0, profitLoss: 0 });
   }, [assets]);
 
   const hasPension = useMemo(() => assets.some(a => a.category === 'Pension'), [assets]);
@@ -143,8 +145,9 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
       .reduce((acc, asset) => ({
         costMyr: acc.costMyr + asset.totalCostMyr,
         valueUsd: acc.valueUsd + asset.currentValueUsd,
-        valueMyr: acc.valueMyr + asset.currentValueMyr
-      }), { costMyr: 0, valueUsd: 0, valueMyr: 0 });
+        valueMyr: acc.valueMyr + asset.currentValueMyr,
+        profitLoss: acc.profitLoss + asset.profitLossMyr
+      }), { costMyr: 0, valueUsd: 0, valueMyr: 0, profitLoss: 0 });
   }, [assets, hasPension]);
 
   // Helper to format currency
@@ -158,9 +161,15 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
     }).format(val);
   };
 
+  // 格式化数量 - 支持8位小数以适配 BTC 等加密货币
   const fmtNum = (val: number) => {
     if (isPrivacyMode) return '****';
-    return val.toLocaleString();
+    // 如果是小数，最多显示8位有效小数
+    if (val < 1 && val > 0) {
+      return val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+    }
+    // 如果是整数或较大数字，最多2位小数
+    return val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
   }
 
   // --- Drag & Drop Handlers ---
@@ -442,6 +451,40 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
       case 'currentValueMyr':
         return <div className="font-bold text-slate-900 dark:text-white">{fmt(asset.currentValueMyr, 'MYR')}</div>;
 
+      case 'averageCost':
+        // 平均成本价（每单位）
+        if (isPension(asset.category)) {
+          return <span className="text-slate-400">-</span>;
+        }
+        if (isCashLike(asset.category)) {
+          return <span className="text-slate-400 font-mono">1.00</span>;
+        }
+        return (
+          <div className="text-slate-600 dark:text-slate-300 font-mono">
+            <span className="text-xs text-slate-400 dark:text-slate-500 mr-1">{asset.currency}</span>
+            {isPrivacyMode ? '****' : asset.averageCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+          </div>
+        );
+
+      case 'profitLoss':
+        // 盈亏金额和百分比
+        if (isPension(asset.category) || isCashLike(asset.category)) {
+          return <span className="text-slate-400">-</span>;
+        }
+        const isPositive = asset.profitLossMyr >= 0;
+        return (
+          <div className="text-right">
+            <div className={`font-bold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}`}>
+              {isPrivacyMode ? (isPositive ? '+****' : '-****') : (
+                `${isPositive ? '+' : ''}RM ${asset.profitLossMyr.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+              )}
+            </div>
+            <div className={`text-xs font-mono ${isPositive ? 'text-emerald-500' : 'text-red-500'}`}>
+              {isPositive ? '+' : ''}{asset.profitLossPercent.toFixed(1)}%
+            </div>
+          </div>
+        );
+
       case 'currentAllocationPercent':
         return <div className="text-sm font-semibold bg-slate-100 dark:bg-slate-700 dark:text-slate-200 py-1.5 px-3 rounded-full inline-block">{asset.currentAllocationPercent.toFixed(1)}%</div>;
 
@@ -598,7 +641,21 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
                   if (colKey === 'totalCostOriginal') content = <>{fmt(totals.costMyr, 'MYR')}</>;
                   else if (colKey === 'currentValueUsd') content = <>{fmt(totals.valueUsd, 'USD')}</>;
                   else if (colKey === 'currentValueMyr') content = <>{fmt(totals.valueMyr, 'MYR')}</>;
-                  else if (index === 0) content = <span className="uppercase text-xs tracking-wider text-slate-500">Total (Est)</span>;
+                  else if (colKey === 'profitLoss') {
+                    const isPos = totals.profitLoss >= 0;
+                    const pct = totals.costMyr > 0 ? (totals.profitLoss / totals.costMyr) * 100 : 0;
+                    content = (
+                      <div className="text-right">
+                        <div className={isPos ? 'text-emerald-600' : 'text-red-600'}>
+                          {isPrivacyMode ? (isPos ? '+****' : '-****') : `${isPos ? '+' : ''}RM ${totals.profitLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                        </div>
+                        <div className={`text-xs ${isPos ? 'text-emerald-500' : 'text-red-500'}`}>
+                          {isPos ? '+' : ''}{pct.toFixed(1)}%
+                        </div>
+                      </div>
+                    );
+                  }
+                  else if (index === 0) content = <span className="uppercase text-xs tracking-wider text-slate-500">Total</span>;
 
                   return (
                     <td key={colKey} className={`px-6 py-4 ${colDef?.align === 'right' ? 'text-right' : colDef?.align === 'center' ? 'text-center' : 'text-left'}`}>
@@ -617,7 +674,21 @@ const AssetTable: React.FC<AssetTableProps> = ({ title, assets, onUpdateAsset, o
                     if (colKey === 'totalCostOriginal') content = <>{fmt(totalsExclPension.costMyr, 'MYR')}</>;
                     else if (colKey === 'currentValueUsd') content = <>{fmt(totalsExclPension.valueUsd, 'USD')}</>;
                     else if (colKey === 'currentValueMyr') content = <>{fmt(totalsExclPension.valueMyr, 'MYR')}</>;
-                    else if (index === 0) content = <span className="uppercase text-xs tracking-wider text-slate-400">Total (Excl. EPF)</span>;
+                    else if (colKey === 'profitLoss') {
+                      const isPos = totalsExclPension.profitLoss >= 0;
+                      const pct = totalsExclPension.costMyr > 0 ? (totalsExclPension.profitLoss / totalsExclPension.costMyr) * 100 : 0;
+                      content = (
+                        <div className="text-right">
+                          <div className={isPos ? 'text-emerald-500' : 'text-red-500'}>
+                            {isPrivacyMode ? (isPos ? '+****' : '-****') : `${isPos ? '+' : ''}RM ${totalsExclPension.profitLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                          </div>
+                          <div className={`text-xs ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {isPos ? '+' : ''}{pct.toFixed(1)}%
+                          </div>
+                        </div>
+                      );
+                    }
+                    else if (index === 0) content = <span className="uppercase text-xs tracking-wider text-slate-400">Excl. EPF</span>;
 
                     return (
                       <td key={colKey} className={`px-6 py-3 ${colDef?.align === 'right' ? 'text-right' : colDef?.align === 'center' ? 'text-center' : 'text-left'}`}>
