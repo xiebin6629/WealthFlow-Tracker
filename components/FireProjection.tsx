@@ -2,8 +2,9 @@
 import React, { useMemo } from 'react';
 import { FireProjectionSettings } from '../types';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { TrendingUp, Calendar, Target, DollarSign, AlertCircle, Briefcase, RefreshCw, Calculator, Flag, CheckCircle2, Clock, Download } from 'lucide-react';
+import { TrendingUp, Calendar, Target, DollarSign, AlertCircle, Briefcase, RefreshCw, Calculator, Flag, CheckCircle2, Clock, Download, Unlock } from 'lucide-react';
 import ScenarioSimulator from './ScenarioSimulator';
+import { calculateTrueLiquidity, getLatestTopUpStartAge, EPF_DEFAULT_THRESHOLD } from '../utils/epfEnhancedSavings';
 
 interface FireProjectionProps {
   settings: FireProjectionSettings;
@@ -86,6 +87,8 @@ const FireProjection: React.FC<FireProjectionProps> = ({
 }) => {
 
   // --- Projection Engine ---
+  const epfThreshold = settings.epfWithdrawalThreshold || EPF_DEFAULT_THRESHOLD;
+
   const projectionData = useMemo(() => {
     const currentYear = new Date().getFullYear();
     const currentAge = currentYear - settings.birthYear;
@@ -97,13 +100,20 @@ const FireProjection: React.FC<FireProjectionProps> = ({
     const data = [];
     // Start from current year
     for (let i = 0; i <= yearsToProject; i++) {
+      // Calculate true liquidity with EPF overflow
+      const trueLiquidityInfo = calculateTrueLiquidity(liquidBal, epfBal, epfThreshold);
+
       data.push({
         year: currentYear + i,
         age: Number(currentAge) + i, // Ensure numeric addition
         liquid: Math.round(liquidBal),
         epf: Math.round(epfBal),
         total: Math.round(liquidBal + epfBal),
-        target: fireTarget // Include target for tooltip
+        target: fireTarget, // Include target for tooltip
+        // EPF Enhanced Savings fields
+        accessibleEpf: Math.round(trueLiquidityInfo.accessibleEpf),
+        trueLiquid: Math.round(trueLiquidityInfo.totalLiquid),
+        isEpfUnlocked: trueLiquidityInfo.isEpfUnlocked
       });
 
       // Apply annual contributions
@@ -118,7 +128,7 @@ const FireProjection: React.FC<FireProjectionProps> = ({
       epfBal = epfBal * (1 + realEpfReturnRate);
     }
     return data;
-  }, [settings, currentLiquidNetWorth, currentEpfNetWorth, fireTarget]);
+  }, [settings, currentLiquidNetWorth, currentEpfNetWorth, fireTarget, epfThreshold]);
 
   // --- Findings ---
   const reachedFireTotalIndex = projectionData.findIndex(d => d.total >= fireTarget);
@@ -150,6 +160,32 @@ const FireProjection: React.FC<FireProjectionProps> = ({
       };
     }).filter(m => m.data !== undefined || m.isAchieved); // Only show reachable milestones
   }, [projectionData]);
+
+  // --- EPF Enhanced Savings Calculations ---
+  const epfEnhancedInfo = useMemo(() => {
+    if (!settings.enableEnhancedSavingsStrategy) return null;
+
+    // Find first year when EPF is unlocked
+    const epfUnlockedData = projectionData.find(d => d.isEpfUnlocked);
+
+    // Calculate top-up start age if EPF won't reach threshold naturally
+    const targetAge = 45; // Target early retirement age for RIA benefit
+    const targetYearData = projectionData.find(d => d.age === targetAge);
+    const topUpInfo = targetYearData
+      ? getLatestTopUpStartAge(targetAge, targetYearData.epf, epfThreshold)
+      : null;
+
+    // Current status
+    const currentData = projectionData.length > 0 ? projectionData[0] : null;
+
+    return {
+      epfUnlockedData,
+      topUpInfo,
+      currentAccessibleEpf: currentData?.accessibleEpf || 0,
+      currentTrueLiquid: currentData?.trueLiquid || 0,
+      isCurrentlyUnlocked: currentData?.isEpfUnlocked || false
+    };
+  }, [projectionData, settings.enableEnhancedSavingsStrategy, epfThreshold]);
 
   const handleExport = () => {
     if (!projectionData || projectionData.length === 0) return;
@@ -399,9 +435,9 @@ const FireProjection: React.FC<FireProjectionProps> = ({
               </button>
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 min-h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={projectionData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <AreaChart data={projectionData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorLiquid" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8} />
@@ -427,6 +463,16 @@ const FireProjection: React.FC<FireProjectionProps> = ({
                   />
                   <Tooltip content={<CustomTooltip isPrivacyMode={isPrivacyMode} />} />
                   <ReferenceLine y={fireTarget} stroke="#10b981" strokeDasharray="5 5" label={{ value: '目标', position: 'insideTopRight', fill: '#10b981', fontSize: 12 }} />
+
+                  {/* EPF 1.3M Threshold Line */}
+                  {settings.enableEnhancedSavingsStrategy && (
+                    <ReferenceLine
+                      y={epfThreshold}
+                      stroke="#f59e0b"
+                      strokeDasharray="3 3"
+                      label={{ value: `EPF ${(epfThreshold / 1000000).toFixed(1)}M`, position: 'insideBottomRight', fill: '#f59e0b', fontSize: 11 }}
+                    />
+                  )}
 
                   {/* Stacked Areas: Liquid on Bottom, EPF on Top */}
                   <Area
@@ -462,7 +508,62 @@ const FireProjection: React.FC<FireProjectionProps> = ({
                 <div className="w-3 h-3 border border-dashed border-emerald-500"></div>
                 <span style={{ color: 'var(--text-secondary)' }}>FIRE 目标线</span>
               </div>
+              {settings.enableEnhancedSavingsStrategy && (
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 border border-dashed border-amber-500"></div>
+                  <span style={{ color: 'var(--text-secondary)' }}>EPF 门槛</span>
+                </div>
+              )}
             </div>
+
+            {/* EPF Enhanced Savings Status */}
+            {settings.enableEnhancedSavingsStrategy && epfEnhancedInfo && (
+              <div className="mt-4 pt-4 border-t" style={{ borderColor: 'var(--border-light)' }}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Liquidity Unlocked Status */}
+                  <div
+                    className={`p-3 rounded-xl flex items-center gap-3 ${epfEnhancedInfo.isCurrentlyUnlocked
+                      ? 'bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-700'
+                      : 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+                      }`}
+                  >
+                    <Unlock size={20} className={epfEnhancedInfo.isCurrentlyUnlocked ? 'text-emerald-500' : 'text-slate-400'} />
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide" style={{ color: epfEnhancedInfo.isCurrentlyUnlocked ? '#059669' : 'var(--text-muted)' }}>
+                        {epfEnhancedInfo.isCurrentlyUnlocked ? 'Liquidity Unlocked' : '尚未解锁'}
+                      </p>
+                      <p className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                        {epfEnhancedInfo.isCurrentlyUnlocked
+                          ? `可提领 RM ${epfEnhancedInfo.currentAccessibleEpf.toLocaleString()}`
+                          : `距门槛 RM ${(epfThreshold - currentEpfNetWorth).toLocaleString()}`}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* True Liquidity */}
+                  <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700">
+                    <p className="text-xs font-bold uppercase tracking-wide text-blue-600 dark:text-blue-400">真实流动性</p>
+                    <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                      {isPrivacyMode ? 'RM ****' : `RM ${epfEnhancedInfo.currentTrueLiquid.toLocaleString()}`}
+                    </p>
+                    <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>流动资产 + 可提领EPF</p>
+                  </div>
+
+                  {/* Top-up Deadline */}
+                  {epfEnhancedInfo.topUpInfo && (
+                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700">
+                      <p className="text-xs font-bold uppercase tracking-wide text-amber-600 dark:text-amber-400">搬家倒计时</p>
+                      <p className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                        {epfEnhancedInfo.topUpInfo.startAge} 岁开始
+                      </p>
+                      <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>
+                        需 {epfEnhancedInfo.topUpInfo.yearsNeeded} 年填补 RM {epfEnhancedInfo.topUpInfo.totalRequired.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Milestone Roadmap - 里程碑 */}

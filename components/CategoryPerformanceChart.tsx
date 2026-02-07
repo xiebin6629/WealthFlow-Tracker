@@ -136,24 +136,30 @@ const CategoryPerformanceChart: React.FC<CategoryPerformanceChartProps> = ({
 
             {/* Best & Worst Performers */}
             <div className="grid grid-cols-2 gap-4 mt-4">
-                <div className="p-3 rounded-lg" style={{ background: 'var(--success-50)' }}>
-                    <p className="text-xs font-bold uppercase" style={{ color: 'var(--success-600)' }}>最佳表现</p>
-                    <p className="text-lg font-bold" style={{ color: 'var(--success-700)' }}>
+                <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800">
+                    <p className="text-xs font-bold uppercase text-emerald-600 dark:text-emerald-400">最佳表现</p>
+                    <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">
                         {data[0]?.category}
                     </p>
-                    <p className="text-sm font-mono" style={{ color: 'var(--success-600)' }}>
+                    <p className="text-sm font-mono text-emerald-600 dark:text-emerald-400">
                         {isPrivacyMode ? '****' : `+RM ${data[0]?.profitLoss.toLocaleString()}`}
                     </p>
                 </div>
                 {data.length > 1 && data[data.length - 1].profitLoss < data[0].profitLoss && (
-                    <div className="p-3 rounded-lg" style={{ background: data[data.length - 1].profitLoss < 0 ? 'var(--danger-50)' : 'var(--bg-tertiary)' }}>
-                        <p className="text-xs font-bold uppercase" style={{ color: data[data.length - 1].profitLoss < 0 ? 'var(--danger-600)' : 'var(--text-muted)' }}>
+                    <div className={`p-3 rounded-lg border ${data[data.length - 1].profitLoss < 0
+                            ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800'
+                            : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'
+                        }`}>
+                        <p className={`text-xs font-bold uppercase ${data[data.length - 1].profitLoss < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'
+                            }`}>
                             {data[data.length - 1].profitLoss < 0 ? '最差表现' : '最低收益'}
                         </p>
-                        <p className="text-lg font-bold" style={{ color: data[data.length - 1].profitLoss < 0 ? 'var(--danger-700)' : 'var(--text-secondary)' }}>
+                        <p className={`text-lg font-bold ${data[data.length - 1].profitLoss < 0 ? 'text-red-700 dark:text-red-300' : 'text-slate-700 dark:text-slate-300'
+                            }`}>
                             {data[data.length - 1]?.category}
                         </p>
-                        <p className="text-sm font-mono" style={{ color: data[data.length - 1].profitLoss < 0 ? 'var(--danger-600)' : 'var(--text-muted)' }}>
+                        <p className={`text-sm font-mono ${data[data.length - 1].profitLoss < 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'
+                            }`}>
                             {isPrivacyMode ? '****' : `${data[data.length - 1]?.profitLoss > 0 ? '+' : ''}RM ${data[data.length - 1]?.profitLoss.toLocaleString()}`}
                         </p>
                     </div>

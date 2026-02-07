@@ -84,20 +84,20 @@ const DeviationAlertCard: React.FC<DeviationAlertProps> = ({
     const getActionBadge = (action: string, severity: string) => {
         if (action === 'HOLD') {
             return (
-                <span className="px-2 py-0.5 rounded text-xs font-bold" style={{ background: 'var(--success-50)', color: 'var(--success-600)' }}>
+                <span className="px-2 py-0.5 rounded text-xs font-bold whitespace-nowrap flex-shrink-0" style={{ background: 'var(--success-50)', color: 'var(--success-600)' }}>
                     ✓ 平衡
                 </span>
             );
         }
         if (action === 'BUY') {
             return (
-                <span className="px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1" style={{ background: 'var(--primary-50)', color: 'var(--primary-600)' }}>
+                <span className="px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 whitespace-nowrap flex-shrink-0" style={{ background: 'var(--primary-50)', color: 'var(--primary-600)' }}>
                     <ArrowUpCircle size={12} /> 加仓
                 </span>
             );
         }
         return (
-            <span className="px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1" style={{ background: 'var(--danger-50)', color: 'var(--danger-600)' }}>
+            <span className="px-2 py-0.5 rounded text-xs font-bold flex items-center gap-1 whitespace-nowrap flex-shrink-0" style={{ background: 'var(--danger-50)', color: 'var(--danger-600)' }}>
                 <ArrowDownCircle size={12} /> 减仓
             </span>
         );
@@ -150,7 +150,7 @@ const DeviationAlertCard: React.FC<DeviationAlertProps> = ({
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 flex-shrink-0">
                             {/* Current vs Target */}
                             <div className="text-right">
                                 <div className="flex items-center gap-2 text-sm">

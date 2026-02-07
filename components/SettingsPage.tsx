@@ -317,6 +317,75 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                         </div>
                     </div>
                 </div>
+
+                {/* 5. EPF 增强储蓄策略 (EPF Enhanced Savings / RIA 1.3M) */}
+                <div className="p-6 rounded-2xl shadow-lg border md:col-span-2" style={sectionStyle}>
+                    <h3 className="text-lg font-bold mb-4 flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                        <Briefcase size={20} className="text-emerald-500" /> EPF 增强储蓄策略 (RIA 1.3M)
+                    </h3>
+                    <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>
+                        根据 EPF RIA 框架，55 岁前 EPF 超过门槛的部分可随时提领，成为"准流动资产"。
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* 启用开关 */}
+                        <div className="flex flex-col">
+                            <label className="label min-h-[48px] flex items-end pb-1">启用增强策略</label>
+                            <div className="flex items-center gap-3">
+                                <button
+                                    onClick={() => handleFireChange('enableEnhancedSavingsStrategy', !localFireSettings.enableEnhancedSavingsStrategy)}
+                                    className={`relative w-14 h-7 rounded-full transition-colors duration-200 ${localFireSettings.enableEnhancedSavingsStrategy
+                                            ? 'bg-emerald-500'
+                                            : 'bg-slate-600'
+                                        }`}
+                                >
+                                    <span
+                                        className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${localFireSettings.enableEnhancedSavingsStrategy ? 'translate-x-7' : ''
+                                            }`}
+                                    />
+                                </button>
+                                <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>
+                                    {localFireSettings.enableEnhancedSavingsStrategy ? '已启用' : '已关闭'}
+                                </span>
+                            </div>
+                            <p className="note mt-2">启用后将在推演图表中显示 EPF 门槛线</p>
+                        </div>
+
+                        {/* EPF 提领门槛 */}
+                        <div>
+                            <label className="label min-h-[48px] flex items-end pb-1">EPF 提领门槛</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
+                                <input
+                                    type="number"
+                                    step="10000"
+                                    value={localFireSettings.epfWithdrawalThreshold || 1300000}
+                                    onChange={(e) => handleFireChange('epfWithdrawalThreshold', parseFloat(e.target.value))}
+                                    className="input !pl-20"
+                                    disabled={!localFireSettings.enableEnhancedSavingsStrategy}
+                                />
+                            </div>
+                            <p className="note">2028 年起标准为 RM 1,300,000</p>
+                        </div>
+
+                        {/* 年度缴存上限 */}
+                        <div>
+                            <label className="label min-h-[48px] flex items-end pb-1">年度自愿缴存上限</label>
+                            <div className="relative">
+                                <span className="absolute left-3 top-2.5 font-bold text-slate-500">RM</span>
+                                <input
+                                    type="number"
+                                    step="1000"
+                                    value={localFireSettings.epfSelfContributionLimit || 100000}
+                                    onChange={(e) => handleFireChange('epfSelfContributionLimit', parseFloat(e.target.value))}
+                                    className="input !pl-20"
+                                    disabled={!localFireSettings.enableEnhancedSavingsStrategy}
+                                />
+                            </div>
+                            <p className="note">每年可额外缴存的最高金额</p>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

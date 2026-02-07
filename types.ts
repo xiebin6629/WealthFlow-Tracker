@@ -14,6 +14,7 @@ export interface Asset {
   currentPrice: number;
   targetAllocation: number; // Percentage 0-100
   groupName?: string; // For grouping assets (e.g. BTC + IBIT)
+  isEpfBridgeSource?: boolean; // 是否作为 EPF 过桥资金来源
   pensionConfig?: {
     baseAmount: number;
     monthlyContribution: number;
@@ -43,6 +44,10 @@ export interface FireProjectionSettings {
   // Reverse Calc
   desiredMonthlySpending: number;
   withdrawalRate: number; // New field for custom SWR (e.g., 3.5 or 4.0)
+  // EPF RIA (1.3M Rule) Settings
+  epfWithdrawalThreshold?: number;       // EPF 提领门槛 (默认 1,300,000)
+  epfSelfContributionLimit?: number;     // 年度自愿缴存上限 (默认 100,000)
+  enableEnhancedSavingsStrategy?: boolean; // 增强储蓄策略开关
 }
 
 export interface ComputedAsset extends Asset {

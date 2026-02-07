@@ -26,7 +26,8 @@ const STORAGE_KEYS = {
   FIRE_SETTINGS: 'WF_FIRE_SETTINGS',
   LAST_CLOUD_SYNC: 'WF_LAST_CLOUD_SYNC',
   CLIENT_ID: 'WF_CLIENT_ID',
-  YEARLY_RECORDS: 'WF_YEARLY_RECORDS'
+  YEARLY_RECORDS: 'WF_YEARLY_RECORDS',
+  PRIVACY_MODE: 'WF_PRIVACY_MODE'
 };
 
 interface PriceUpdateLogItem {
@@ -247,7 +248,31 @@ const App: React.FC = () => {
 
   // UI State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isPrivacyMode, setIsPrivacyMode] = useState(false);
+  // 隐私模式：默认开启以保护隐私，打开时自动隐藏所有敏感数据
+  const [isPrivacyMode, setIsPrivacyMode] = useState(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.PRIVACY_MODE);
+    // 如果从未设置过，默认开启隐私模式
+    if (saved === null) return true;
+    return saved === 'true';
+  });
+
+  // 保存隐私模式状态
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.PRIVACY_MODE, String(isPrivacyMode));
+  }, [isPrivacyMode]);
+
+  // 侧边菜单打开时锁定背景滚动
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    // 清理函数：组件卸载时恢复滚动
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
 
   // --- Persistence Effects ---
   useEffect(() => {
@@ -716,7 +741,7 @@ const App: React.FC = () => {
       <div
         className="md:hidden p-4 flex justify-between items-center z-30 sticky top-0 shadow-lg backdrop-blur-xl"
         style={{
-          background: 'rgba(255, 255, 255, 0.95)',
+          background: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
           borderBottom: '1px solid var(--border-light)'
         }}
       >
@@ -728,10 +753,18 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button onClick={toggleTheme} className="p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            style={{ color: isDark ? '#f59e0b' : '#64748b' }}
+          >
             {isDark ? <Sun size={20} /> : <Moon size={20} />}
           </button>
-          <button onClick={togglePrivacy} className="p-2 rounded-lg" style={{ color: 'var(--text-secondary)' }}>
+          <button
+            onClick={togglePrivacy}
+            className="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+            style={{ color: isDark ? (isPrivacyMode ? '#22c55e' : '#94a3b8') : (isPrivacyMode ? '#16a34a' : '#64748b') }}
+          >
             {isPrivacyMode ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
